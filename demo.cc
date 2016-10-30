@@ -73,5 +73,5 @@ void MyFrame::OnAbout(wxCommandEvent& event)
 
 void MyFrame::OnSelectColor(wxCommandEvent &event)
 {
-  ShowColorSelectionDialog();
+  ShowColorSelectionDialog(this);
 }
