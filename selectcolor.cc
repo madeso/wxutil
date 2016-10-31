@@ -133,35 +133,54 @@ class ColorModel {
 
 class RectangleModel : public ColorModel {
  private:
-  static wxSize CalculateMinSize(const wxSize& rectangleSize) {
-    return wxSize(rectangleSize.x+1, rectangleSize.y+1);
+  static const int SPACE = 12;
+  static const int SLIDER = 30;
+  static wxSize CalculateMinSize(const wxSize& rectangleSize, int sliderMax) {
+    return wxSize(rectangleSize.x+1 + SPACE + SLIDER, std::max(rectangleSize.y+1, sliderMax+1));
   }
  public:
-  RectangleModel(const wxSize& rectangleSize) : ColorModel(CalculateMinSize(rectangleSize)), rectangleSize_(rectangleSize) {}
+  RectangleModel(const wxSize& rectangleSize, int sliderMax) : ColorModel(CalculateMinSize(rectangleSize, sliderMax)), rectangleSize_(rectangleSize), sliderMax_(sliderMax) {}
   ~RectangleModel() {}
 
   virtual wxColor GetColor(int x, int y) const = 0;
+  virtual wxColor GetColor(int y) const = 0;
 
   void Render(wxPaintDC* dc) {
-    wxImage image(rectangleSize_.x+1, rectangleSize_.y+1);
+    wxImage rectangle(rectangleSize_.x+1, rectangleSize_.y+1);
     for(int y=0; y<=rectangleSize_.y; ++y) {
       for(int x=0; x<=rectangleSize_.x; ++x) {
         const wxColor c = GetColor(x,y);
-        image.SetRGB(x, y, c.Red(), c.Green(), c.Blue());
+        rectangle.SetRGB(x, y, c.Red(), c.Green(), c.Blue());
       }
     }
+
+    wxImage slider(1, sliderMax_+1);
+    for(int y=0; y<=sliderMax_; ++y) {
+      const wxColor c = GetColor(y);
+      slider.SetRGB(0, y, c.Red(), c.Green(), c.Blue());
+    }
+
     wxSize size = dc->GetSize();
-    image.Rescale(size.x, size.y, wxIMAGE_QUALITY_NEAREST);
-    dc->DrawBitmap(wxBitmap(image), 0, 0);
+    rectangle.Rescale(size.x-SPACE-SLIDER, size.y, wxIMAGE_QUALITY_NEAREST);
+    slider.Rescale(SLIDER, size.y, wxIMAGE_QUALITY_NEAREST);
+
+    dc->Clear();
+    dc->DrawBitmap(wxBitmap(rectangle), 0, 0);
+    dc->DrawBitmap(wxBitmap(slider), size.x-SLIDER, 0);
   }
  private:
   wxSize rectangleSize_;
+  int sliderMax_;
 };
 
 class HsvColorModel : public RectangleModel {
  public:
-  HsvColorModel() : RectangleModel(wxSize(100, 100)) {}
+  HsvColorModel() : RectangleModel(wxSize(100, 100), 360) {}
   ~HsvColorModel() {}
+
+  wxColor GetColor(int x) const {
+    return HsvToRgb(x, 50, 50);
+  }
 
   wxColor GetColor(int x, int y) const {
     return HsvToRgb(0, x, y);
@@ -181,6 +200,8 @@ class ColorPanel : public wxPanel {
   void OnPaint(wxPaintEvent& event)
   {
     wxPaintDC dc(this);
+    wxColor b = wxSystemSettings::GetColour(wxSYS_COLOUR_FRAMEBK);
+    dc.SetBackground(wxBrush(b));
     currentModel_->Render(&dc);
   }
 
