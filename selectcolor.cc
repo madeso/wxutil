@@ -250,10 +250,17 @@ class ColorDialog : public wxDialog {
     properties->Add(hsb);
     properties->Add(lab);
 
-    wxPanel* color = new ColorPanel(this);
+    ColorPanel* color = new ColorPanel(this);
     color->SetBackgroundColour(wxColor(0,0,0));
     color->SetMinSize(wxSize(100, 100));
-    colordialog->Add(color, 1, wxEXPAND | wxALL, 10);
+
+    wxComboBox* colorModelSelection = new wxComboBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN);
+
+    wxBoxSizer* left = new wxBoxSizer(wxVERTICAL);
+    left->Add(colorModelSelection, 0, wxCENTER | wxALL, 10);
+    left->Add(color, 1, wxEXPAND | wxALL, 10);
+
+    colordialog->Add(left, 1, wxEXPAND | wxALL, 10);
     colordialog->Add(properties, 0, wxALL, 10);
 
     topsizer->Add(colordialog, 1, wxEXPAND | wxALL, 10);
