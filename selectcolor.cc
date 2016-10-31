@@ -5,6 +5,8 @@
 #include <wx/wx.h>
 #endif
 
+#include <memory>
+
 #include <wx/spinctrl.h>
 
 wxFlexGridSizer* CreateSizer(int count) {
@@ -118,34 +120,68 @@ wxColor HsvToRgb(int h, int s0, int v0) {
   return wxColor((r+m)*255.0f, (g+m)*255.0f, (b+m)*255.0f);
 }
 
+class ColorModel {
+ public:
+  ColorModel(const wxSize& minSize) : minSize_(minSize) {}
+  virtual ~ColorModel() {}
+  virtual void Render(wxPaintDC* dc) = 0;
+
+  const wxSize& GetMinSize() const { return minSize_; }
+ private:
+  wxSize minSize_;
+};
+
+class RectangleModel : public ColorModel {
+ private:
+  static wxSize CalculateMinSize(const wxSize& rectangleSize) {
+    return wxSize(rectangleSize.x+1, rectangleSize.y+1);
+  }
+ public:
+  RectangleModel(const wxSize& rectangleSize) : ColorModel(CalculateMinSize(rectangleSize)), rectangleSize_(rectangleSize) {}
+  ~RectangleModel() {}
+
+  virtual wxColor GetColor(int x, int y) const = 0;
+
+  void Render(wxPaintDC* dc) {
+    wxImage image(rectangleSize_.x+1, rectangleSize_.y+1);
+    for(int y=0; y<=rectangleSize_.y; ++y) {
+      for(int x=0; x<=rectangleSize_.x; ++x) {
+        const wxColor c = GetColor(x,y);
+        image.SetRGB(x, y, c.Red(), c.Green(), c.Blue());
+      }
+    }
+    wxSize size = dc->GetSize();
+    image.Rescale(size.x, size.y, wxIMAGE_QUALITY_NEAREST);
+    dc->DrawBitmap(wxBitmap(image), 0, 0);
+  }
+ private:
+  wxSize rectangleSize_;
+};
+
+class HsvColorModel : public RectangleModel {
+ public:
+  HsvColorModel() : RectangleModel(wxSize(100, 100)) {}
+  ~HsvColorModel() {}
+
+  wxColor GetColor(int x, int y) const {
+    return HsvToRgb(0, x, y);
+  }
+};
+
 class ColorPanel : public wxPanel {
  public:
-  ColorPanel(wxWindow* parent) : wxPanel(parent), hue(0) {
+  ColorPanel(wxWindow* parent) : wxPanel(parent), currentModel_( new HsvColorModel() ) {
     SetCursor(*wxCROSS_CURSOR);
-    SetMinSize(wxSize(101, 101));
+
+    SetMinSize(currentModel_->GetMinSize());
     Bind(wxEVT_PAINT, &ColorPanel::OnPaint, this);
     Bind(wxEVT_SIZE, &ColorPanel::OnResize, this);
-  }
-
-  void SetHue(int h) {
-    hue = h;
-    Refresh(false);
   }
 
   void OnPaint(wxPaintEvent& event)
   {
     wxPaintDC dc(this);
-
-    wxImage image(101, 101);
-    for(int y=0; y<101; ++y) {
-      for(int x=0; x<101; ++x) {
-        const wxColor c = HsvToRgb(hue, x, y);
-        image.SetRGB(x, y, c.Red(), c.Green(), c.Blue());
-      }
-    }
-    wxSize size = dc.GetSize();
-    image.Rescale(size.x, size.y, wxIMAGE_QUALITY_NEAREST);
-    dc.DrawBitmap(wxBitmap(image), 0, 0);
+    currentModel_->Render(&dc);
   }
 
   void OnResize(wxSizeEvent& event)
@@ -154,7 +190,7 @@ class ColorPanel : public wxPanel {
   }
 
  private:
-  int hue;
+  std::shared_ptr<ColorModel> currentModel_;
 };
 
 class ColorDialog : public wxDialog {
