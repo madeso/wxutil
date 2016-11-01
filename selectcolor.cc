@@ -19,19 +19,26 @@ void AddWindow(wxWindow* parent, wxFlexGridSizer* sizer, const wxString& name, w
   wxStaticText* a = new wxStaticText(parent, wxID_ANY, name);
   wxStaticText* c = new wxStaticText(parent, wxID_ANY, unit);
 
-  sizer->Add(a);
-  sizer->Add(b);
-  sizer->Add(c);
+  sizer->Add(a, 0, wxALIGN_CENTER_VERTICAL | wxALIGN_RIGHT | wxALL, 0);
+  sizer->Add(b, 1, wxEXPAND | wxALL, 0);
+  sizer->Add(c, 0, wxALIGN_CENTER_VERTICAL | wxALIGN_LEFT | wxALL, 0);
 }
+
+void SetMaxSize(wxWindow* b) { b->SetMaxSize(wxSize(75, 400)); }
 
 void AddNumber(wxWindow* parent, wxFlexGridSizer* sizer, const wxString& name, int min, int max, const wxString& unit) {
   wxSpinCtrl* b = new wxSpinCtrl(parent);
   b->SetRange(min, max);
+  b->SetValue(max);
+  SetMaxSize(b);
   AddWindow(parent, sizer, name + ":", b, unit);
 }
 
 void AddText(wxWindow* parent, wxFlexGridSizer* sizer, const wxString& name, const wxString& unit) {
   wxTextCtrl* b = new wxTextCtrl(parent, wxID_ANY);
+  b->SetMaxLength(6);
+  b->SetValue("FAFAFA");
+  SetMaxSize(b);
   AddWindow(parent, sizer, name, b, unit);
 }
 
@@ -131,6 +138,12 @@ class ColorModel {
   wxSize minSize_;
 };
 
+void Rescale(wxImage &image, int width, int height, wxImageResizeQuality quality) {
+  if( height <= 0) return;
+  if( width <= 0) return;
+  image.Rescale(width, height, quality);
+}
+
 class RectangleModel : public ColorModel {
  private:
   static const int SPACE = 12;
@@ -161,8 +174,8 @@ class RectangleModel : public ColorModel {
     }
 
     wxSize size = dc->GetSize();
-    rectangle.Rescale(size.x-SPACE-SLIDER, size.y, wxIMAGE_QUALITY_NEAREST);
-    slider.Rescale(SLIDER, size.y, wxIMAGE_QUALITY_NEAREST);
+    Rescale(rectangle, size.x-SPACE-SLIDER, size.y, wxIMAGE_QUALITY_NEAREST);
+    Rescale(slider, SLIDER, size.y, wxIMAGE_QUALITY_NEAREST);
 
     dc->Clear();
     dc->DrawBitmap(wxBitmap(rectangle), 0, 0);
@@ -214,6 +227,19 @@ class ColorPanel : public wxPanel {
   std::shared_ptr<ColorModel> currentModel_;
 };
 
+wxBoxSizer* CreateColorSelector(wxWindow* parent, const wxString& name, const wxColor c) {
+  wxBoxSizer* s = new wxBoxSizer(wxVERTICAL);
+  wxStaticText* text = new wxStaticText(parent, wxID_ANY, name);
+  wxPanel* col = new wxPanel(parent);
+
+  col->SetMinSize(wxSize(70, 25));
+  col->SetBackgroundColour(c);
+
+  s->Add(text, 0, wxCENTER | wxALL, 0);
+  s->Add(col, 1, wxEXPAND | wxALL, 0);
+  return s;
+}
+
 class ColorDialog : public wxDialog {
  public:
   ColorDialog(wxWindow* parent) : wxDialog(parent, wxID_ANY, "Select Color") {
@@ -242,13 +268,16 @@ class ColorDialog : public wxDialog {
     AddNumber(this, lab, "b", 0, 255, "");
 
     wxBoxSizer* colordialog = new wxBoxSizer(wxHORIZONTAL);
-    wxFlexGridSizer* properties = new wxFlexGridSizer(2, 2, wxSize(3, 3));
+    wxFlexGridSizer* properties = new wxFlexGridSizer(3, 2, wxSize(3, 3));
     properties->AddGrowableRow(0, 1);
     properties->AddGrowableCol(0, 1);
-    properties->Add(rgbhex);
-    properties->Add(cmyk);
-    properties->Add(hsb);
-    properties->Add(lab);
+    properties->Add(CreateColorSelector(this, "Current", wxColor(0, 0, 0)), 1, wxEXPAND | wxALL, 3);
+    properties->Add(CreateColorSelector(this, "New", wxColor(255, 0, 0)), 1, wxEXPAND | wxALL, 3);
+
+    properties->Add(rgbhex, 0, wxALL, 6);
+    properties->Add(cmyk, 0, wxALL, 6);
+    properties->Add(hsb, 0, wxALL, 6);
+    properties->Add(lab, 0, wxALL, 6);
 
     ColorPanel* color = new ColorPanel(this);
     color->SetBackgroundColour(wxColor(0,0,0));
@@ -264,7 +293,7 @@ class ColorDialog : public wxDialog {
     colordialog->Add(properties, 0, wxALL, 10);
 
     topsizer->Add(colordialog, 1, wxEXPAND | wxALL, 10);
-    topsizer->Add(CreateButtonSizer(wxOK| wxCANCEL), 0, wxALL, 10);
+    topsizer->Add(CreateButtonSizer(wxOK| wxCANCEL), 0,  wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxALL, 10);
 
     SetSizerAndFit(topsizer);
   }
