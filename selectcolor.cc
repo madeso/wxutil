@@ -144,10 +144,12 @@ void Rescale(wxImage &image, int width, int height, wxImageResizeQuality quality
   image.Rescale(width, height, quality);
 }
 
+const int SLIDER_SIZE = 30;
+
 class RectangleModel : public ColorModel {
  private:
   static const int SPACE = 12;
-  static const int SLIDER = 30;
+  static const int SLIDER = SLIDER_SIZE;
   static wxSize CalculateMinSize(const wxSize& rectangleSize, int sliderMax) {
     return wxSize(rectangleSize.x+1 + SPACE + SLIDER, std::max(rectangleSize.y+1, sliderMax+1));
   }
@@ -227,6 +229,51 @@ class ColorPanel : public wxPanel {
   std::shared_ptr<ColorModel> currentModel_;
 };
 
+const wxColour ColorAlpha(const wxColor &color, int i) {
+  return wxColor(color.Red(), color.Green(), color.Blue(), 255);
+}
+
+class AlphaPanel : public wxPanel {
+ private:
+  static const int CHECK_SIZE = 12;
+  static const int CHECKER_COUNT = 4;
+  static const int grey = 200;
+ public:
+  AlphaPanel(wxWindow* parent) : wxPanel(parent), color(255, 0, 0) {
+    SetCursor(*wxCROSS_CURSOR);
+
+    SetMinSize(wxSize(CHECK_SIZE*CHECKER_COUNT, CHECK_SIZE*CHECKER_COUNT));
+    Bind(wxEVT_PAINT, &AlphaPanel::OnPaint, this);
+    Bind(wxEVT_SIZE, &AlphaPanel::OnResize, this);
+  }
+
+  void OnPaint(wxPaintEvent& event)
+  {
+    wxImage checkers(CHECK_SIZE*4, CHECK_SIZE*4);
+    for(int x=0; x<CHECK_SIZE*4; ++x) {
+      for(int y=0; y<CHECK_SIZE*4; ++y) {
+        const bool ch = x/CHECK_SIZE%2==y/CHECK_SIZE%2;
+        const int c = ch ? 255 : grey;
+        checkers.SetRGB(x, y, c, c, c);
+      }
+    }
+    wxPaintDC dc(this);
+    wxSize size = dc.GetSize();dc.SetBrush(wxColor(255, 255, 255));
+    dc.SetBrush(wxBrush(wxBitmap(checkers)));
+    dc.DrawRectangle(size);
+    dc.
+    dc.GradientFillLinear(size, ColorAlpha(color, 255), ColorAlpha(color, 0));
+  }
+
+  void OnResize(wxSizeEvent& event)
+  {
+    Refresh(false);
+  }
+
+ private:
+  wxColor color;
+};
+
 wxBoxSizer* CreateColorSelector(wxWindow* parent, const wxString& name, const wxColor c) {
   wxBoxSizer* s = new wxBoxSizer(wxVERTICAL);
   wxStaticText* text = new wxStaticText(parent, wxID_ANY, name);
@@ -289,8 +336,11 @@ class ColorDialog : public wxDialog {
     left->Add(colorModelSelection, 0, wxCENTER | wxALL, 10);
     left->Add(color, 1, wxEXPAND | wxALL, 10);
 
+    AlphaPanel* alpha = new AlphaPanel(this);
+
     colordialog->Add(left, 1, wxEXPAND | wxALL, 10);
     colordialog->Add(properties, 0, wxALL, 10);
+    colordialog->Add(alpha, 0, wxEXPAND | wxALL, 10);
 
     topsizer->Add(colordialog, 1, wxEXPAND | wxALL, 10);
     topsizer->Add(CreateButtonSizer(wxOK| wxCANCEL), 0,  wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxALL, 10);
