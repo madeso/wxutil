@@ -41,3 +41,19 @@ add_executable(demo WIN32 MACOSX_BUNDLE ${src})
 target_link_libraries(demo
                       ${wxWidgets_LIBRARIES}
                       )
+
+add_executable(connex
+							 connex/connex.cpp
+							 connex/connex_example.cpp
+							 connex/connex_example.h
+							 connex/connex.h
+							 connex/connexnode.cpp
+							 connex/connexnode.h
+							 connex/connexspace.cpp
+							 connex/connexspace.h
+)
+
+target_link_libraries(connex
+	${wxWidgets_LIBRARIES}
+)
+
