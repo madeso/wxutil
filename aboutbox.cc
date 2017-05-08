@@ -15,23 +15,23 @@
 #include "aboutbox.h"
 #include "wx/mstream.h"
 
-IMPLEMENT_DYNAMIC_CLASS( wxMozillaLikeAboutBoxDialog, wxDialog )
+IMPLEMENT_DYNAMIC_CLASS( AboutBox, wxDialog )
 
-BEGIN_EVENT_TABLE( wxMozillaLikeAboutBoxDialog, wxDialog )
+BEGIN_EVENT_TABLE( AboutBox, wxDialog )
 END_EVENT_TABLE()
 
-wxMozillaLikeAboutBoxDialog::wxMozillaLikeAboutBoxDialog()
+AboutBox::AboutBox()
 {
   Init();
 }
 
-wxMozillaLikeAboutBoxDialog::wxMozillaLikeAboutBoxDialog( wxWindow* parent, wxWindowID id, const wxString& caption, const wxPoint& pos, const wxSize& size, long style )
+AboutBox::AboutBox( wxWindow* parent, wxWindowID id, const wxString& caption, const wxPoint& pos, const wxSize& size, long style )
 {
   Init();
   Create(parent, id, caption, pos, size, style);
 }
 
-bool wxMozillaLikeAboutBoxDialog::Create( wxWindow* parent, wxWindowID id, const wxString& caption, const wxPoint& pos, const wxSize& size, long style )
+bool AboutBox::Create( wxWindow* parent, wxWindowID id, const wxString& caption, const wxPoint& pos, const wxSize& size, long style )
 {
   SetExtraStyle(wxWS_EX_BLOCK_EVENTS);
   wxDialog::Create( parent, id, caption, pos, size, style );
@@ -44,11 +44,11 @@ bool wxMozillaLikeAboutBoxDialog::Create( wxWindow* parent, wxWindowID id, const
   return true;
 }
 
-wxMozillaLikeAboutBoxDialog::~wxMozillaLikeAboutBoxDialog()
+AboutBox::~AboutBox()
 {
 }
 
-void wxMozillaLikeAboutBoxDialog::Init()
+void AboutBox::Init()
 {
   m_ContentPanel = NULL;
   m_HeaderStaticBitmap = NULL;
@@ -58,9 +58,9 @@ void wxMozillaLikeAboutBoxDialog::Init()
   m_BuildInfoStaticText = NULL;
 }
 
-void wxMozillaLikeAboutBoxDialog::CreateControls()
+void AboutBox::CreateControls()
 {
-  wxMozillaLikeAboutBoxDialog* itemDialog1 = this;
+  AboutBox* itemDialog1 = this;
   wxBoxSizer* itemBoxSizer2 = new wxBoxSizer(wxVERTICAL);
   itemDialog1->SetSizer(itemBoxSizer2);
   m_ContentPanel = new wxPanel( itemDialog1, ID_ContentPanel, wxDefaultPosition, wxSize(200, 300), wxNO_BORDER|wxTAB_TRAVERSAL );
@@ -99,10 +99,10 @@ void wxMozillaLikeAboutBoxDialog::CreateControls()
   wxButton* itemButton15 = new wxButton( itemDialog1, wxID_OK, _("&OK"), wxDefaultPosition, wxDefaultSize, 0 );
   itemStdDialogButtonSizer14->AddButton(itemButton15);
   itemStdDialogButtonSizer14->Realize();
-  m_BuildInfoStaticText->SetLabel(wxMozillaLikeAboutBoxDialog::GetBuildInfo(wxBUILDINFO_LONG));
+  m_BuildInfoStaticText->SetLabel(AboutBox::GetBuildInfo(wxBUILDINFO_LONG));
 }
 
-wxString wxMozillaLikeAboutBoxDialog::GetBuildInfo(wxBuildInfoFormat format)
+wxString AboutBox::GetBuildInfo(wxBuildInfoFormat format)
 {
   wxString wxbuild(wxVERSION_STRING);
 
@@ -132,12 +132,12 @@ wxBitmap wxGetBitmapFromMemory(const void * data, size_t length)
   return wxBitmap(stream, wxBITMAP_TYPE_ANY);
 }
 
-void wxMozillaLikeAboutBoxDialog::SetHeaderBitmap(const wxBitmap & value)
+void AboutBox::SetHeaderBitmap(const wxBitmap & value)
 {
   m_HeaderStaticBitmap->SetBitmap(value);
 }
 
-void wxMozillaLikeAboutBoxDialog::ApplyInfo()
+void AboutBox::ApplyInfo()
 {
   wxASSERT_MSG(m_HeaderStaticBitmap->GetBitmap().IsOk(), _("Header bitmap for About box is empty"));
   SetTitle(wxString::Format(wxT("%s %s"), _("About"), m_AppName.GetData()));
@@ -147,7 +147,7 @@ void wxMozillaLikeAboutBoxDialog::ApplyInfo()
   wxString buildInfo;
   if(m_CustomBuildInfo.IsEmpty())
   {
-    buildInfo = wxMozillaLikeAboutBoxDialog::GetBuildInfo(wxBUILDINFO_LONG);
+    buildInfo = AboutBox::GetBuildInfo(wxBUILDINFO_LONG);
   }
   else
   {
@@ -168,7 +168,7 @@ void wxMozillaLikeAboutBoxDialog::ApplyInfo()
 void TestAboutBox()
 {
   // Create About box
-  wxMozillaLikeAboutBoxDialog * dlg = new wxMozillaLikeAboutBoxDialog(this);
+  AboutBox * dlg = new AboutBox(this);
   // Set application name
   dlg->SetAppName(wxTheApp->GetAppName());
   // Set application version
@@ -180,7 +180,7 @@ void TestAboutBox()
   // Set build info message. This is optional step. If you don't specify build info message then
   // default one will be used
   dlg->SetCustomBuildInfo(wxString::Format(wxT("%s. %s"),
-                                           wxMozillaLikeAboutBoxDialog::GetBuildInfo(wxMozillaLikeAboutBoxDialog::wxBUILDINFO_LONG).GetData(),
+                                           AboutBox::GetBuildInfo(AboutBox::wxBUILDINFO_LONG).GetData(),
                                            _("Compiled by T-Rex personally :)")));
   // Set header bitmap
   dlg->SetHeaderBitmap(wxGetBitmapFromMemory(header_png, sizeof(header_png)));

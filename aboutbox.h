@@ -15,13 +15,13 @@
 #define SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_SIZE wxSize(400, 300)
 #define SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_POSITION wxDefaultPosition
 
-class wxMozillaLikeAboutBoxDialog: public wxDialog
+class AboutBox: public wxDialog
 {
-DECLARE_DYNAMIC_CLASS( wxMozillaLikeAboutBoxDialog )
+DECLARE_DYNAMIC_CLASS( AboutBox )
 DECLARE_EVENT_TABLE()
 public:
-  wxMozillaLikeAboutBoxDialog();
-  wxMozillaLikeAboutBoxDialog( wxWindow* parent,
+  AboutBox();
+  AboutBox( wxWindow* parent,
                                wxWindowID id = SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_IDNAME,
                                const wxString& caption = SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_TITLE,
                                const wxPoint& pos = SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_POSITION,
@@ -35,7 +35,7 @@ public:
                const wxSize& size = SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_SIZE,
                long style = SYMBOL_WXMOZILLALIKEABOUTBOXDIALOG_STYLE );
 
-  ~wxMozillaLikeAboutBoxDialog();
+  ~AboutBox();
 
   void Init();
   void CreateControls();
