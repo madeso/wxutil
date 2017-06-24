@@ -29,7 +29,24 @@ class Graph : public wxPanel
  public:
   Graph(wxWindow* parent);
   wxSize DoGetBestSize() const;
+
   void OnPaint(wxPaintEvent& event);
+
+  void OnMouseMoved(wxMouseEvent& event);
+  void OnMouseUp(wxMouseEvent& event);
+  void OnMouseDown(wxMouseEvent& event);
+  void OnMouse(wxMouseEvent& event, bool down);
+  void OnMouseWheelMoved(wxMouseEvent& event);
+  void OnMouseRightClick(wxMouseEvent& event);
+  void OnMouseLeftWindow(wxMouseEvent& event);
+  void OnKeyPressed(wxKeyEvent& event);
+  void OnKeyReleased(wxKeyEvent& event);
+
+  int x;
+  int y;
+  bool down;
+
+  void Invalidate();
 };
 
 
