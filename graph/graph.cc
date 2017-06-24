@@ -6,6 +6,32 @@
 
 #include "wx/brush.h"
 
+const int ViewData::HorizontalConvert(float f) const {
+  return static_cast<int>(f);
+}
+const int ViewData::VerticalConvert(float f) const {
+  return static_cast<int>(f);
+}
+wxPoint ViewData::Convert(const vec2f& p) const {
+  return wxPoint(HorizontalConvert(p.x), VerticalConvert(p.y));
+}
+wxSize ViewData::Convert(const Sizef& s) const {
+  return wxSize(HorizontalConvert(s.GetWidth()), VerticalConvert(s.GetHeight()));
+}
+
+Object::Object() : rect(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)) { }
+Object::~Object() { }
+
+void Object::Draw(wxPaintDC* dc, const ViewData& view) {
+  dc->SetPen( wxPen(wxColor(0,0,0), 1) );
+  dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(wxColor(100, 255, 255)));
+  dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
+
+  dc->SetTextForeground(wxColor(0,0,0));
+  dc->DrawText("Hello world", view.Convert(rect.GetPosition()));
+}
+
+
 Graph::Graph(wxWindow *parent) : wxPanel(parent) {
   Bind(wxEVT_PAINT, &Graph::OnPaint, this);
 }
@@ -24,11 +50,8 @@ void Graph::OnPaint(wxPaintEvent&) {
   dc.SetBackground(*wxTheBrushList->FindOrCreateBrush(wxColor(255, 255, 255)));
   dc.Clear();
 
-  dc.SetPen( wxPen(wxColor(0,0,0), 1) );
-  dc.SetBrush(*wxTheBrushList->FindOrCreateBrush(wxColor(100, 255, 255)));
-  dc.DrawRectangle(wxPoint(0,0), wxSize(100, 100));
-
-  dc.SetTextForeground(wxColor(0,0,0));
-  dc.DrawText("Hello world", 0, 0);
+  ViewData view;
+  Object object;
+  object.Draw(&dc, view);
 }
 
