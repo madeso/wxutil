@@ -27,11 +27,22 @@ class DrawData {
 
 class Object {
  public:
-  Object(const Rectf& r);
-  ~Object();
+  Object();
+  virtual ~Object();
 
-  void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw);
-  bool HitTest(const vec2f& pos);
+  virtual void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const = 0;
+  virtual bool HitTest(const vec2f& pos) const = 0;
+
+
+};
+
+class Node : public Object {
+ public:
+  Node(const Rectf &r);
+  ~Node();
+
+  void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override ;
+  bool HitTest(const vec2f& pos) const override;
 
   Rectf rect;
 };

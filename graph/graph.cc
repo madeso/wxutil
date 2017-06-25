@@ -21,10 +21,13 @@ wxSize ViewData::Convert(const Sizef& s) const {
 DrawData::DrawData() : mouse(0.0f, 0.0f), selected(false) {
 }
 
-Object::Object(const Rectf& r) : rect(r) { }
+Object::Object() { }
 Object::~Object() { }
 
-void Object::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) {
+Node::Node(const Rectf& r) : rect(r) { }
+Node::~Node() { }
+
+void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const {
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
   wxColor c (100, 255, 255);
   if(draw.selected) {
@@ -38,7 +41,8 @@ void Object::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) {
     dc->DrawText("Hello world", view.Convert(rect.GetPosition()));
   }
 }
-bool Object::HitTest(const vec2f& pos) {
+
+bool Node::HitTest(const vec2f& pos) const {
   return rect.ContainsInclusive(pos);
 }
 
@@ -57,13 +61,13 @@ Graph::Graph(wxWindow *parent) : wxPanel(parent), x(0),y(0), down(false)  {
 
   std::shared_ptr<Object> o;
 
-  o.reset(new Object(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)));
+  o.reset(new Node(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)));
   objects.push_back(o);
 
-  o.reset(new Object(Rectf::FromTopLeftWidthHeight(50.0f, 180.0f, 100.0f, 100.0f)));
+  o.reset(new Node(Rectf::FromTopLeftWidthHeight(50.0f, 180.0f, 100.0f, 100.0f)));
   objects.push_back(o);
 
-  o.reset(new Object(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f)));
+  o.reset(new Node(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f)));
   objects.push_back(o);
 }
 
