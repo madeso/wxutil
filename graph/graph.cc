@@ -11,20 +11,31 @@ const int ViewData::VerticalConvert(float f) const {
 wxPoint ViewData::Convert(const vec2f& p) const {
   return wxPoint(HorizontalConvert(p.x), VerticalConvert(p.y));
 }
+vec2f ViewData::Convert(const wxPoint& p) const {
+  return vec2f(p.x, p.y);
+}
 wxSize ViewData::Convert(const Sizef& s) const {
   return wxSize(HorizontalConvert(s.GetWidth()), VerticalConvert(s.GetHeight()));
+}
+
+DrawData::DrawData() : mouse(0.0f, 0.0f) {
 }
 
 Object::Object() : rect(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)) { }
 Object::~Object() { }
 
-void Object::Draw(wxPaintDC* dc, const ViewData& view) {
+void Object::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) {
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
   dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(wxColor(100, 255, 255)));
   dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
 
   dc->SetTextForeground(wxColor(0,0,0));
-  dc->DrawText("Hello world", view.Convert(rect.GetPosition()));
+  if(HitTest(draw.mouse)) {
+    dc->DrawText("Hello world", view.Convert(rect.GetPosition()));
+  }
+}
+bool Object::HitTest(const vec2f& pos) {
+  return rect.ContainsInclusive(pos);
 }
 
 
@@ -56,8 +67,11 @@ void Graph::OnPaint(wxPaintEvent&) {
   dc.Clear();
 
   ViewData view;
+
+  DrawData draw;
+  draw.mouse = view.Convert(wxPoint(x,y));
   Object object;
-  object.Draw(&dc, view);
+  object.Draw(&dc, view, draw);
 
   dc.SetPen( wxPen(wxColor(0,0,0), 3, down? wxPENSTYLE_LONG_DASH:wxPENSTYLE_SOLID ) );
   dc.DrawLine(0, 0, x, y);

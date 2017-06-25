@@ -12,14 +12,23 @@ class ViewData {
   const int HorizontalConvert(float f) const;
   const int VerticalConvert(float f) const;
   wxPoint Convert(const vec2f& p) const;
+  vec2f Convert(const wxPoint& p) const;
   wxSize Convert(const Sizef& s) const;
+};
+
+class DrawData {
+ public:
+  DrawData();
+  vec2f mouse;
 };
 
 class Object {
  public:
   Object();
   ~Object();
-  void Draw(wxPaintDC* dc, const ViewData& view);
+
+  void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw);
+  bool HitTest(const vec2f& pos);
 
   Rectf rect;
 };
@@ -45,6 +54,8 @@ class Graph : public wxPanel
   int x;
   int y;
   bool down;
+
+  std::vector<Object> objects;
 
   void Invalidate();
 };
