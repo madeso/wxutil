@@ -95,8 +95,9 @@ void Graph::OnPaint(wxPaintEvent&) {
     o->Draw(&dc, view, draw);
   }
 
-  dc.SetPen( wxPen(wxColor(0,0,0), 3, down? wxPENSTYLE_LONG_DASH:wxPENSTYLE_SOLID ) );
-  dc.DrawLine(0, 0, x, y);
+  dc.SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
+  dc.DrawLine(x, 0, x, height);
+  dc.DrawLine(0, y, width, y);
 }
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {
