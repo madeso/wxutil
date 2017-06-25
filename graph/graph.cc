@@ -18,15 +18,19 @@ wxSize ViewData::Convert(const Sizef& s) const {
   return wxSize(HorizontalConvert(s.GetWidth()), VerticalConvert(s.GetHeight()));
 }
 
-DrawData::DrawData() : mouse(0.0f, 0.0f) {
+DrawData::DrawData() : mouse(0.0f, 0.0f), selected(false) {
 }
 
-Object::Object() : rect(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)) { }
+Object::Object(const Rectf& r) : rect(r) { }
 Object::~Object() { }
 
 void Object::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) {
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
-  dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(wxColor(100, 255, 255)));
+  wxColor c (100, 255, 255);
+  if(draw.selected) {
+    c = wxColor(255, 255, 255);
+  }
+  dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(c));
   dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
 
   dc->SetTextForeground(wxColor(0,0,0));
@@ -50,6 +54,17 @@ Graph::Graph(wxWindow *parent) : wxPanel(parent), x(0),y(0), down(false)  {
   Bind(wxEVT_KEY_DOWN, &Graph::OnKeyPressed, this);
   Bind(wxEVT_KEY_UP, &Graph::OnKeyReleased, this);
   Bind(wxEVT_MOUSEWHEEL, &Graph::OnMouseWheelMoved, this);
+
+  std::shared_ptr<Object> o;
+
+  o.reset(new Object(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)));
+  objects.push_back(o);
+
+  o.reset(new Object(Rectf::FromTopLeftWidthHeight(50.0f, 180.0f, 100.0f, 100.0f)));
+  objects.push_back(o);
+
+  o.reset(new Object(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f)));
+  objects.push_back(o);
 }
 
 wxSize Graph::DoGetBestSize() const {
@@ -59,7 +74,7 @@ wxSize Graph::DoGetBestSize() const {
 void Graph::OnPaint(wxPaintEvent&) {
   wxPaintDC dc (this);
   wxCoord width = 0;
-  wxCoord  height = 0;
+  wxCoord height = 0;
 
   GetClientSize( &width, &height );
 
@@ -70,8 +85,11 @@ void Graph::OnPaint(wxPaintEvent&) {
 
   DrawData draw;
   draw.mouse = view.Convert(wxPoint(x,y));
-  Object object;
-  object.Draw(&dc, view, draw);
+
+  for(std::shared_ptr<Object> o : objects) {
+    draw.selected = std::find(selected.begin(), selected.end(), o.get()) != selected.end();
+    o->Draw(&dc, view, draw);
+  }
 
   dc.SetPen( wxPen(wxColor(0,0,0), 3, down? wxPENSTYLE_LONG_DASH:wxPENSTYLE_SOLID ) );
   dc.DrawLine(0, 0, x, y);
@@ -85,8 +103,23 @@ void Graph::OnMouseMoved(wxMouseEvent& event) {
 }
 
 void Graph::OnMouse(wxMouseEvent& event, bool d) {
+  const auto p = event.GetPosition();
+  x = p.x;
+  y = p.y;
   down = d;
   Invalidate();
+
+  ViewData view;
+  const vec2f mouse = view.Convert(wxPoint(x,y));
+
+  selected.clear();
+
+  for(std::shared_ptr<Object> o : objects) {
+    const bool hit = o->HitTest(mouse);
+    if(hit) {
+      selected.push_back(o.get());
+    }
+  }
 }
 
 void Graph::Invalidate() {

@@ -3,6 +3,8 @@
 #ifndef WXUTIL_GRAPH_GRAPH_H
 #define WXUTIL_GRAPH_GRAPH_H
 
+#include <memory>
+
 #include "wx.h"
 
 #include "core/rect.h"
@@ -20,11 +22,12 @@ class DrawData {
  public:
   DrawData();
   vec2f mouse;
+  bool selected;
 };
 
 class Object {
  public:
-  Object();
+  Object(const Rectf& r);
   ~Object();
 
   void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw);
@@ -55,7 +58,8 @@ class Graph : public wxPanel
   int y;
   bool down;
 
-  std::vector<Object> objects;
+  std::vector<std::shared_ptr<Object>> objects;
+  std::vector<Object*> selected;
 
   void Invalidate();
 };
