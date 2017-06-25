@@ -24,7 +24,7 @@ DrawData::DrawData() : mouse(0.0f, 0.0f), selected(false) {
 Object::Object() { }
 Object::~Object() { }
 
-Node::Node(const Rectf& r) : rect(r) { }
+Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t) { }
 Node::~Node() { }
 
 void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const {
@@ -38,7 +38,7 @@ void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const
 
   dc->SetTextForeground(wxColor(0,0,0));
   if(HitTest(draw.mouse)) {
-    dc->DrawText("Hello world", view.Convert(rect.GetPosition()));
+    dc->DrawText(text.c_str(), view.Convert(rect.GetPosition()));
   }
 }
 
@@ -61,13 +61,13 @@ Graph::Graph(wxWindow *parent) : wxPanel(parent), x(0),y(0), down(false)  {
 
   std::shared_ptr<Object> o;
 
-  o.reset(new Node(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f)));
+  o.reset(new Node(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f), "Hello world"));
   objects.push_back(o);
 
-  o.reset(new Node(Rectf::FromTopLeftWidthHeight(50.0f, 180.0f, 100.0f, 100.0f)));
+  o.reset(new Node(Rectf::FromTopLeftWidthHeight(50.0f, 180.0f, 100.0f, 100.0f), "Goodbye world"));
   objects.push_back(o);
 
-  o.reset(new Node(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f)));
+  o.reset(new Node(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f), "Awesome world"));
   objects.push_back(o);
 }
 

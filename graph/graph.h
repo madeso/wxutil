@@ -4,6 +4,7 @@
 #define WXUTIL_GRAPH_GRAPH_H
 
 #include <memory>
+#include <string>
 
 #include "wx.h"
 
@@ -38,13 +39,14 @@ class Object {
 
 class Node : public Object {
  public:
-  Node(const Rectf &r);
+  Node(const Rectf &r, const std::string& t);
   ~Node();
 
   void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override ;
   bool HitTest(const vec2f& pos) const override;
 
   Rectf rect;
+  std::string text;
 };
 
 class Graph : public wxPanel
