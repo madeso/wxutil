@@ -107,19 +107,27 @@ void Graph::OnMouse(wxMouseEvent& event, bool d) {
   x = p.x;
   y = p.y;
   down = d;
-  Invalidate();
 
   ViewData view;
   const vec2f mouse = view.Convert(wxPoint(x,y));
 
-  selected.clear();
-
-  for(std::shared_ptr<Object> o : objects) {
-    const bool hit = o->HitTest(mouse);
-    if(hit) {
-      selected.push_back(o.get());
+  if(d) {
+    if(event.ShiftDown()) {
+      // multi selection
+    }
+    else {
+      // if no shift, clear previous selection
+      selected.clear();
+    }
+    for(std::shared_ptr<Object> o : objects) {
+      const bool hit = o->HitTest(mouse);
+      if(hit) {
+        selected.push_back(o.get());
+      }
     }
   }
+
+  Invalidate();
 }
 
 void Graph::Invalidate() {
