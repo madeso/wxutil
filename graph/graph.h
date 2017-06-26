@@ -25,8 +25,13 @@ class ViewData {
 class DrawData {
  public:
   DrawData();
-  vec2f mouse;
+
+  // is this node selected
   bool selected;
+
+  // client area
+  int height;
+  int width;
 };
 
 class Object {
@@ -36,8 +41,6 @@ class Object {
 
   virtual void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const = 0;
   virtual bool HitTest(const vec2f& pos) const = 0;
-
-
 };
 
 class Node : public Object {
@@ -50,6 +53,22 @@ class Node : public Object {
 
   Rectf rect;
   std::string text;
+};
+
+class GraphData {
+ public:
+  std::vector<std::shared_ptr<Object>> objects;
+  std::vector<Object*> selected;
+};
+
+class Tool {
+ public:
+  Tool();
+  virtual ~Tool();
+
+  virtual void OnMouseMoved(GraphData* data, wxMouseEvent& event) = 0;
+  virtual void OnMouse(GraphData* data, wxMouseEvent& event, bool down) = 0;
+  virtual void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) = 0;
 };
 
 class Graph : public wxPanel
@@ -70,12 +89,9 @@ class Graph : public wxPanel
   void OnKeyPressed(wxKeyEvent& event);
   void OnKeyReleased(wxKeyEvent& event);
 
-  int x;
-  int y;
-  bool down;
+  GraphData data;
 
-  std::vector<std::shared_ptr<Object>> objects;
-  std::vector<Object*> selected;
+  std::shared_ptr<Tool> tool;
 
   void Invalidate();
 };

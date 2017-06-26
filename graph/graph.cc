@@ -33,7 +33,7 @@ Sizef ViewData::Convert(const wxSize& s) const {
   return Sizef::FromWidthHeight(s.x, s.y);
 }
 
-DrawData::DrawData() : mouse(0.0f, 0.0f), selected(false) {
+DrawData::DrawData() : selected(false), height(0), width(0) {
 }
 
 Object::Object() { }
@@ -52,19 +52,68 @@ void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const
   dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
 
   dc->SetTextForeground(wxColor(0,0,0));
-  if(HitTest(draw.mouse)) {
-    const Sizef size = view.Convert(dc->GetTextExtent(text.c_str()));
-    vec2f offset =  rect.GetSize().CalculateCenterOffsetFor(size);
-    dc->DrawText(text.c_str(), view.Convert(rect.GetPosition() + offset));
-  }
+  const Sizef size = view.Convert(dc->GetTextExtent(text.c_str()));
+  vec2f offset =  rect.GetSize().CalculateCenterOffsetFor(size);
+  dc->DrawText(text.c_str(), view.Convert(rect.GetPosition() + offset));
 }
 
 bool Node::HitTest(const vec2f& pos) const {
   return rect.ContainsInclusive(pos);
 }
 
+Tool::Tool() {}
+Tool::~Tool() {}
 
-Graph::Graph(wxWindow *parent) : wxPanel(parent), x(0),y(0), down(false)  {
+class SelectTool : public Tool {
+ public:
+  SelectTool() : x(0),y(0), down(false) {}
+  ~SelectTool() {}
+
+  void OnMouseMoved(GraphData* data, wxMouseEvent& event) override {
+    const auto p = event.GetPosition();
+    x = p.x;
+    y = p.y;
+  }
+
+  void OnMouse(GraphData* data, wxMouseEvent& event, bool d) override {
+    const auto p = event.GetPosition();
+    x = p.x;
+    y = p.y;
+    down = d;
+
+    ViewData view;
+    const vec2f mouse = view.Convert(wxPoint(x,y));
+
+    if(d) {
+      if(event.ShiftDown()) {
+        // multi selection
+      }
+      else {
+        // if no shift, clear previous selection
+        data->selected.clear();
+      }
+      for(std::shared_ptr<Object> o : data->objects) {
+        const bool hit = o->HitTest(mouse);
+        if(hit) {
+          data->selected.push_back(o.get());
+        }
+      }
+    }
+  }
+
+  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+    dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
+    dc->DrawLine(x, 0, x, draw.height);
+    dc->DrawLine(0, y, draw.width, y);
+  }
+
+  int x;
+  int y;
+  bool down;
+};
+
+
+Graph::Graph(wxWindow *parent) : wxPanel(parent) {
   Bind(wxEVT_PAINT, &Graph::OnPaint, this);
 
   Bind(wxEVT_MOTION, &Graph::OnMouseMoved, this);
@@ -79,13 +128,15 @@ Graph::Graph(wxWindow *parent) : wxPanel(parent), x(0),y(0), down(false)  {
   std::shared_ptr<Object> o;
 
   o.reset(new Node(Rectf::FromTopLeftWidthHeight(10.0f, 10.0f, 100.0f, 100.0f), "Hello world"));
-  objects.push_back(o);
+  data.objects.push_back(o);
 
   o.reset(new Node(Rectf::FromTopLeftWidthHeight(50.0f, 180.0f, 100.0f, 100.0f), "Goodbye world"));
-  objects.push_back(o);
+  data.objects.push_back(o);
 
   o.reset(new Node(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f), "Awesome world"));
-  objects.push_back(o);
+  data.objects.push_back(o);
+
+  tool.reset(new SelectTool());
 }
 
 wxSize Graph::DoGetBestSize() const {
@@ -105,50 +156,25 @@ void Graph::OnPaint(wxPaintEvent&) {
   ViewData view;
 
   DrawData draw;
-  draw.mouse = view.Convert(wxPoint(x,y));
+  draw.width = width;
+  draw.height = height;
 
-  for(std::shared_ptr<Object> o : objects) {
-    draw.selected = std::find(selected.begin(), selected.end(), o.get()) != selected.end();
+  for(std::shared_ptr<Object> o : data.objects) {
+    draw.selected = std::find(data.selected.begin(), data.selected.end(), o.get()) != data.selected.end();
     o->Draw(&dc, view, draw);
   }
 
-  dc.SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
-  dc.DrawLine(x, 0, x, height);
-  dc.DrawLine(0, y, width, y);
+  tool->Paint(&dc, view, draw);
 }
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {
-  const auto p = event.GetPosition();
-  x = p.x;
-  y = p.y;
+  tool->OnMouseMoved(&data, event);
   Invalidate();
 }
 
 void Graph::OnMouse(wxMouseEvent& event, bool d) {
-  const auto p = event.GetPosition();
-  x = p.x;
-  y = p.y;
-  down = d;
-
-  ViewData view;
-  const vec2f mouse = view.Convert(wxPoint(x,y));
-
-  if(d) {
-    if(event.ShiftDown()) {
-      // multi selection
-    }
-    else {
-      // if no shift, clear previous selection
-      selected.clear();
-    }
-    for(std::shared_ptr<Object> o : objects) {
-      const bool hit = o->HitTest(mouse);
-      if(hit) {
-        selected.push_back(o.get());
-      }
-    }
-  }
-
+  tool->OnMouseMoved(&data, event);
+  tool->OnMouse(&data, event, d);
   Invalidate();
 }
 
@@ -161,6 +187,9 @@ void Graph::OnMouseUp(wxMouseEvent& event) {OnMouse(event, false);}
 void Graph::OnMouseDown(wxMouseEvent& event) {OnMouse(event, true);}
 void Graph::OnMouseWheelMoved(wxMouseEvent& event) {}
 void Graph::OnMouseRightClick(wxMouseEvent& event) {}
-void Graph::OnMouseLeftWindow(wxMouseEvent& event) {}
+void Graph::OnMouseLeftWindow(wxMouseEvent& event) {
+  tool->OnMouseMoved(&data, event);
+  Invalidate();
+}
 void Graph::OnKeyPressed(wxKeyEvent& event) {}
 void Graph::OnKeyReleased(wxKeyEvent& event) {}
