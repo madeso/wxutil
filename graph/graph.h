@@ -14,9 +14,12 @@ class ViewData {
  public:
   const int HorizontalConvert(float f) const;
   const int VerticalConvert(float f) const;
+
   wxPoint Convert(const vec2f& p) const;
   vec2f Convert(const wxPoint& p) const;
+
   wxSize Convert(const Sizef& s) const;
+  Sizef Convert(const wxSize& s) const;
 };
 
 class DrawData {

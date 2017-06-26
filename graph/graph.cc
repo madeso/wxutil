@@ -2,6 +2,18 @@
 
 #include "wx/brush.h"
 
+Sizef GetTextExtents(const std::string &text) {
+  wxBitmap temp;
+  wxMemoryDC dc;
+  dc.SelectObject(temp);
+
+  ViewData view;
+  const auto ret = view.Convert(dc.GetTextExtent(text.c_str()));
+
+  dc.SelectObject(wxNullBitmap);
+  return ret;
+}
+
 const int ViewData::HorizontalConvert(float f) const {
   return static_cast<int>(f);
 }
@@ -16,6 +28,9 @@ vec2f ViewData::Convert(const wxPoint& p) const {
 }
 wxSize ViewData::Convert(const Sizef& s) const {
   return wxSize(HorizontalConvert(s.GetWidth()), VerticalConvert(s.GetHeight()));
+}
+Sizef ViewData::Convert(const wxSize& s) const {
+  return Sizef::FromWidthHeight(s.x, s.y);
 }
 
 DrawData::DrawData() : mouse(0.0f, 0.0f), selected(false) {
@@ -38,7 +53,9 @@ void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const
 
   dc->SetTextForeground(wxColor(0,0,0));
   if(HitTest(draw.mouse)) {
-    dc->DrawText(text.c_str(), view.Convert(rect.GetPosition()));
+    const Sizef size = view.Convert(dc->GetTextExtent(text.c_str()));
+    vec2f offset =  rect.GetSize().CalculateCenterOffsetFor(size);
+    dc->DrawText(text.c_str(), view.Convert(rect.GetPosition() + offset));
   }
 }
 
