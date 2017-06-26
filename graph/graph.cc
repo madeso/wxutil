@@ -77,23 +77,20 @@ Tool::~Tool() {}
 
 class SelectTool : public Tool {
  public:
-  SelectTool() : x(0),y(0), down(false) {}
+  SelectTool() : down(false), start(0,0), mouse(0,0) {}
   ~SelectTool() {}
 
   void OnMouseMoved(GraphData* data, wxMouseEvent& event) override {
-    const auto p = event.GetPosition();
-    x = p.x;
-    y = p.y;
+    ViewData view;
+    mouse = view.Convert(event.GetPosition());
   }
 
   void OnMouse(GraphData* data, wxMouseEvent& event, bool d) override {
-    const auto p = event.GetPosition();
-    x = p.x;
-    y = p.y;
     down = d;
 
-    ViewData view;
-    const vec2f mouse = view.Convert(wxPoint(x,y));
+    if(d) {
+      start = mouse;
+    }
 
     if(d) {
       if(event.ShiftDown()) {
@@ -113,14 +110,21 @@ class SelectTool : public Tool {
   }
 
   void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+    const wxPoint m = view.Convert(mouse);
     dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
-    dc->DrawLine(x, 0, x, draw.height);
-    dc->DrawLine(0, y, draw.width, y);
+    dc->DrawLine(m.x, 0, m.x, draw.height);
+    dc->DrawLine(0, m.y, draw.width, m.y);
+
+    if(down) {
+      const wxPoint s = view.Convert(start);
+      dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
+      dc->DrawLine(s, m);
+    }
   }
 
-  int x;
-  int y;
   bool down;
+  vec2f start;
+  vec2f mouse;
 };
 
 
