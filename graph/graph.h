@@ -58,7 +58,9 @@ class Node : public Object {
 class GraphData {
  public:
   std::vector<std::shared_ptr<Object>> objects;
-  std::vector<Object*> selected;
+  std::vector<std::weak_ptr<Object>> selected;
+
+  bool IsSelected(std::shared_ptr<Object> o);
 };
 
 class Tool {

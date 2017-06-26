@@ -61,6 +61,17 @@ bool Node::HitTest(const vec2f& pos) const {
   return rect.ContainsInclusive(pos);
 }
 
+bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
+  for(std::weak_ptr<Object> weak : selected) {
+    std::shared_ptr<Object> strong = weak.lock();
+    if( strong.get() == specific_object.get()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 Tool::Tool() {}
 Tool::~Tool() {}
 
@@ -95,7 +106,7 @@ class SelectTool : public Tool {
       for(std::shared_ptr<Object> o : data->objects) {
         const bool hit = o->HitTest(mouse);
         if(hit) {
-          data->selected.push_back(o.get());
+          data->selected.push_back(o);
         }
       }
     }
@@ -160,7 +171,7 @@ void Graph::OnPaint(wxPaintEvent&) {
   draw.height = height;
 
   for(std::shared_ptr<Object> o : data.objects) {
-    draw.selected = std::find(data.selected.begin(), data.selected.end(), o.get()) != data.selected.end();
+    draw.selected = data.IsSelected(o);
     o->Draw(&dc, view, draw);
   }
 
