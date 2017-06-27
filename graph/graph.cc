@@ -39,10 +39,12 @@ DrawData::DrawData() : selected(false), height(0), width(0) {
 Object::Object() { }
 Object::~Object() { }
 
-Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t) { }
+Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t), movement(0,0) { }
 Node::~Node() { }
 
 void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const {
+  const Rectf rect = this->rect.OffsetCopy(movement);
+
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
   wxColor c (100, 255, 255);
   if(draw.selected) {
@@ -59,6 +61,19 @@ void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const
 
 bool Node::HitTest(const vec2f& pos) const {
   return rect.ContainsInclusive(pos);
+}
+
+void Node::MoveSet(const vec2f& m) {
+  movement = m;
+}
+
+void Node::MoveApply(const vec2f& m) {
+  rect = rect.OffsetCopy(m);
+  movement = vec2f(0,0);
+}
+
+void Node::MoveCancel() {
+  movement = vec2f(0,0);
 }
 
 bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
@@ -120,6 +135,55 @@ class SelectTool : public Tool {
       dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
       dc->DrawLine(s, m);
     }
+  }
+
+  bool down;
+  vec2f start;
+  vec2f mouse;
+};
+
+class MoveTool : public Tool {
+ public:
+  MoveTool(const vec2f& s) : down(false), start(s), mouse(0,0) {}
+  ~MoveTool() {}
+
+  void OnMouseMoved(GraphData* data, wxMouseEvent& event) override {
+    ViewData view;
+    mouse = view.Convert(event.GetPosition());
+  }
+
+  void OnMouse(GraphData* data, wxMouseEvent& event, bool d) override {
+    down = d;
+    // start + move = mouse;
+    const vec2f move = vec2f::FromTo(start, mouse);
+
+    for(std::weak_ptr<Object> wo : data->selected) {
+      std::shared_ptr<Object> o = wo.lock();
+      if(o.get()) {
+        o->MoveSet(move);
+      }
+    }
+
+    if(!d) {
+      for(std::weak_ptr<Object> wo : data->selected) {
+        std::shared_ptr<Object> o = wo.lock();
+        if(o.get()) {
+          o->MoveApply(move);
+          // todo: close this tool
+        }
+      }
+    }
+  }
+
+  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+    const wxPoint m = view.Convert(mouse);
+    dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
+    dc->DrawLine(m.x, 0, m.x, draw.height);
+    dc->DrawLine(0, m.y, draw.width, m.y);
+
+    const wxPoint s = view.Convert(start);
+    dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
+    dc->DrawLine(s, m);
   }
 
   bool down;

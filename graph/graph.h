@@ -41,6 +41,10 @@ class Object {
 
   virtual void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const = 0;
   virtual bool HitTest(const vec2f& pos) const = 0;
+
+  virtual void MoveSet(const vec2f& m) = 0;
+  virtual void MoveApply(const vec2f& m) = 0;
+  virtual void MoveCancel() = 0;
 };
 
 class Node : public Object {
@@ -51,7 +55,12 @@ class Node : public Object {
   void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override ;
   bool HitTest(const vec2f& pos) const override;
 
+  void MoveSet(const vec2f& m) override ;
+  void MoveApply(const vec2f& m) override ;
+  void MoveCancel() override ;
+
   Rectf rect;
+  vec2f movement;
   std::string text;
 };
 
