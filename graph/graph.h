@@ -68,11 +68,17 @@ class Tool;
 
 class GraphData {
  public:
+  GraphData();
+
   std::vector<std::shared_ptr<Object>> objects;
   std::vector<std::weak_ptr<Object>> selected;
-  std::shared_ptr<Tool> tool;
+  std::vector<std::shared_ptr<Tool>> tools;
+  bool pop;
 
   bool IsSelected(std::shared_ptr<Object> o);
+  void Step();
+  void Add(std::shared_ptr<Tool> tool);
+  Tool& tool();
 };
 
 class Tool {
@@ -108,7 +114,6 @@ class Graph : public wxPanel
   void Invalidate();
 
   Tool& tool();
-  const Tool& tool() const;
 };
 
 
