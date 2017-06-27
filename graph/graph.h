@@ -55,10 +55,13 @@ class Node : public Object {
   std::string text;
 };
 
+class Tool;
+
 class GraphData {
  public:
   std::vector<std::shared_ptr<Object>> objects;
   std::vector<std::weak_ptr<Object>> selected;
+  std::shared_ptr<Tool> tool;
 
   bool IsSelected(std::shared_ptr<Object> o);
 };
@@ -93,9 +96,10 @@ class Graph : public wxPanel
 
   GraphData data;
 
-  std::shared_ptr<Tool> tool;
-
   void Invalidate();
+
+  Tool& tool();
+  const Tool& tool() const;
 };
 
 

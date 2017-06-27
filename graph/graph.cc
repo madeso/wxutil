@@ -151,7 +151,7 @@ Graph::Graph(wxWindow *parent) : wxPanel(parent) {
   o.reset(new Node(Rectf::FromTopLeftWidthHeight(150.0f, 80.0f, 100.0f, 100.0f), "Awesome world"));
   data.objects.push_back(o);
 
-  tool.reset(new SelectTool());
+  data.tool.reset(new SelectTool());
 }
 
 wxSize Graph::DoGetBestSize() const {
@@ -179,17 +179,17 @@ void Graph::OnPaint(wxPaintEvent&) {
     o->Draw(&dc, view, draw);
   }
 
-  tool->Paint(&dc, view, draw);
+  tool().Paint(&dc, view, draw);
 }
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {
-  tool->OnMouseMoved(&data, event);
+  tool().OnMouseMoved(&data, event);
   Invalidate();
 }
 
 void Graph::OnMouse(wxMouseEvent& event, bool d) {
-  tool->OnMouseMoved(&data, event);
-  tool->OnMouse(&data, event, d);
+  tool().OnMouseMoved(&data, event);
+  tool().OnMouse(&data, event, d);
   Invalidate();
 }
 
@@ -203,8 +203,17 @@ void Graph::OnMouseDown(wxMouseEvent& event) {OnMouse(event, true);}
 void Graph::OnMouseWheelMoved(wxMouseEvent& event) {}
 void Graph::OnMouseRightClick(wxMouseEvent& event) {}
 void Graph::OnMouseLeftWindow(wxMouseEvent& event) {
-  tool->OnMouseMoved(&data, event);
+  tool().OnMouseMoved(&data, event);
   Invalidate();
 }
 void Graph::OnKeyPressed(wxKeyEvent& event) {}
 void Graph::OnKeyReleased(wxKeyEvent& event) {}
+
+
+Tool& Graph::tool() {
+  return *data.tool.get();
+}
+
+const Tool& Graph::tool() const {
+  return *data.tool.get();
+}
