@@ -90,10 +90,11 @@ bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
   return false;
 }
 
-void GraphData::Step() {
+void GraphData::Step(GraphData* data, wxMouseEvent& event) {
   if(pop) {
     if(tools.size() > 1) {
       tools.pop_back();
+      tool().Refresh(data, event);
     }
     pop = false;
   }
@@ -107,19 +108,30 @@ Tool& GraphData::tool() {
   return *tools.rbegin()->get();
 }
 
-Tool::Tool() {}
+Tool::Tool() : mousePosition(0,0), mouseButtonDown(false) {}
+Tool::Tool(const vec2f& m) : mousePosition(m), mouseButtonDown(false) {}
 Tool::~Tool() {}
+void Tool::OnMouseMoved(GraphData* data, wxMouseEvent& event) {
+  ViewData view;
+  mousePosition = view.Convert(event.GetPosition());
+  MouseMoved(data, event);
+}
+void Tool::Refresh(GraphData* data, wxMouseEvent& event) {
+  ViewData view;
+  mousePosition = view.Convert(event.GetPosition());
+}
+void Tool::OnMouseButton(GraphData *data, wxMouseEvent &event, bool d) {
+  mouseButtonDown = d;
+  MouseButton(data, event);
+}
 
 class MoveTool : public Tool {
  public:
-  MoveTool(const vec2f& s, const vec2f& m) : down(false), start(s), mouse(m) {}
+  MoveTool(const vec2f& s, const vec2f& m) : Tool(m), start(s) {}
   ~MoveTool() {}
 
-  void OnMouseMoved(GraphData* data, wxMouseEvent& event) override {
-    ViewData view;
-    mouse = view.Convert(event.GetPosition());
-
-    const vec2f move = vec2f::FromTo(start, mouse);
+  void MouseMoved(GraphData* data, wxMouseEvent& event) override {
+    const vec2f move = vec2f::FromTo(start, mousePosition);
 
     for(std::weak_ptr<Object> wo : data->selected) {
       std::shared_ptr<Object> o = wo.lock();
@@ -129,17 +141,15 @@ class MoveTool : public Tool {
     }
   }
 
-  void OnMouse(GraphData* data, wxMouseEvent& event, bool d) override {
-    down = d;
-    // start + move = mouse;
-    const vec2f move = vec2f::FromTo(start, mouse);
+  void MouseButton(GraphData *data, wxMouseEvent &event) override {
+    // start + move = mousePosition;
+    const vec2f move = vec2f::FromTo(start, mousePosition);
 
-    if(!d) {
+    if(!mouseButtonDown) {
       for(std::weak_ptr<Object> wo : data->selected) {
         std::shared_ptr<Object> o = wo.lock();
         if(o.get()) {
           o->MoveApply(move);
-          // todo: close this tool
           data->pop = true;
         }
       }
@@ -147,7 +157,7 @@ class MoveTool : public Tool {
   }
 
   void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
-    const wxPoint m = view.Convert(mouse);
+    const wxPoint m = view.Convert(mousePosition);
     dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
     dc->DrawLine(m.x, 0, m.x, draw.height);
     dc->DrawLine(0, m.y, draw.width, m.y);
@@ -157,38 +167,31 @@ class MoveTool : public Tool {
     dc->DrawLine(s, m);
   }
 
-  bool down;
   vec2f start;
-  vec2f mouse;
 };
 
 class SelectTool : public Tool {
  public:
-  SelectTool() : down(false), start(0,0), mouse(0,0) {}
+  SelectTool() : start(0,0) {}
   ~SelectTool() {}
 
-  void OnMouseMoved(GraphData* data, wxMouseEvent& event) override {
-    ViewData view;
-    mouse = view.Convert(event.GetPosition());
-
-    if(down) {
-      const float l = vec2f::FromTo(mouse, start).GetLengthSquared();
+  void MouseMoved(GraphData* data, wxMouseEvent& event) override {
+    if(mouseButtonDown) {
+      const float l = vec2f::FromTo(mousePosition, start).GetLengthSquared();
       if(l > 5) {
-        down = false;
-        std::shared_ptr<Tool> t(new MoveTool(start, mouse));
+        mouseButtonDown = false;
+        std::shared_ptr<Tool> t(new MoveTool(start, mousePosition));
         data->Add(t);
       }
     }
   }
 
-  void OnMouse(GraphData* data, wxMouseEvent& event, bool d) override {
-    down = d;
-
-    if(d) {
-      start = mouse;
+  void MouseButton(GraphData *data, wxMouseEvent &event) override {
+    if(mouseButtonDown) {
+      start = mousePosition;
     }
 
-    if(!d) {
+    if(!mouseButtonDown) {
       if(event.ShiftDown()) {
         // multi selection
       }
@@ -197,7 +200,7 @@ class SelectTool : public Tool {
         data->selected.clear();
       }
       for(std::shared_ptr<Object> o : data->objects) {
-        const bool hit = o->HitTest(mouse);
+        const bool hit = o->HitTest(mousePosition);
         if(hit) {
           data->selected.push_back(o);
         }
@@ -206,21 +209,19 @@ class SelectTool : public Tool {
   }
 
   void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
-    const wxPoint m = view.Convert(mouse);
+    const wxPoint m = view.Convert(mousePosition);
     dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
     dc->DrawLine(m.x, 0, m.x, draw.height);
     dc->DrawLine(0, m.y, draw.width, m.y);
 
-    if(down) {
+    if(mouseButtonDown) {
       const wxPoint s = view.Convert(start);
       dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
       dc->DrawLine(s, m);
     }
   }
 
-  bool down;
   vec2f start;
-  vec2f mouse;
 };
 
 
@@ -282,28 +283,28 @@ void Graph::OnPaint(wxPaintEvent&) {
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {
   tool().OnMouseMoved(&data, event);
-  Invalidate();
+  Invalidate(event);
 }
 
-void Graph::OnMouse(wxMouseEvent& event, bool d) {
+void Graph::OnMouseButton(wxMouseEvent &event, bool d) {
   tool().OnMouseMoved(&data, event);
-  tool().OnMouse(&data, event, d);
-  Invalidate();
+  tool().OnMouseButton(&data, event, d);
+  Invalidate(event);
 }
 
-void Graph::Invalidate() {
+void Graph::Invalidate(wxMouseEvent& event) {
+  data.Step(&data, event);
   Refresh();
   Update();
-  data.Step();
 }
 
-void Graph::OnMouseUp(wxMouseEvent& event) {OnMouse(event, false);}
-void Graph::OnMouseDown(wxMouseEvent& event) {OnMouse(event, true);}
+void Graph::OnMouseUp(wxMouseEvent& event) { OnMouseButton(event, false);}
+void Graph::OnMouseDown(wxMouseEvent& event) { OnMouseButton(event, true);}
 void Graph::OnMouseWheelMoved(wxMouseEvent& event) {}
 void Graph::OnMouseRightClick(wxMouseEvent& event) {}
 void Graph::OnMouseLeftWindow(wxMouseEvent& event) {
   tool().OnMouseMoved(&data, event);
-  Invalidate();
+  Invalidate(event);
 }
 void Graph::OnKeyPressed(wxKeyEvent& event) {}
 void Graph::OnKeyReleased(wxKeyEvent& event) {}

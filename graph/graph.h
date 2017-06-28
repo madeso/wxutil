@@ -76,7 +76,7 @@ class GraphData {
   bool pop;
 
   bool IsSelected(std::shared_ptr<Object> o);
-  void Step();
+  void Step(GraphData* data, wxMouseEvent& event);
   void Add(std::shared_ptr<Tool> tool);
   Tool& tool();
 };
@@ -84,11 +84,21 @@ class GraphData {
 class Tool {
  public:
   Tool();
+  Tool(const vec2f& m);
   virtual ~Tool();
 
-  virtual void OnMouseMoved(GraphData* data, wxMouseEvent& event) = 0;
-  virtual void OnMouse(GraphData* data, wxMouseEvent& event, bool down) = 0;
+  void OnMouseMoved(GraphData* data, wxMouseEvent& event);
+  void OnMouseButton(GraphData *data, wxMouseEvent &event, bool down);
+
+  virtual void MouseMoved(GraphData* data, wxMouseEvent& event) = 0;
+  virtual void MouseButton(GraphData *data, wxMouseEvent &event) = 0;
   virtual void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) = 0;
+
+  virtual void Refresh(GraphData* data, wxMouseEvent& event);
+
+ protected:
+  bool mouseButtonDown;
+  vec2f mousePosition;
 };
 
 class Graph : public wxPanel
@@ -102,7 +112,7 @@ class Graph : public wxPanel
   void OnMouseMoved(wxMouseEvent& event);
   void OnMouseUp(wxMouseEvent& event);
   void OnMouseDown(wxMouseEvent& event);
-  void OnMouse(wxMouseEvent& event, bool down);
+  void OnMouseButton(wxMouseEvent &event, bool down);
   void OnMouseWheelMoved(wxMouseEvent& event);
   void OnMouseRightClick(wxMouseEvent& event);
   void OnMouseLeftWindow(wxMouseEvent& event);
@@ -111,7 +121,7 @@ class Graph : public wxPanel
 
   GraphData data;
 
-  void Invalidate();
+  void Invalidate(wxMouseEvent& event);
 
   Tool& tool();
 };
