@@ -124,10 +124,24 @@ void Tool::OnMouseButton(GraphData *data, wxMouseEvent &event, bool d) {
   mouseButtonDown = d;
   MouseButton(data, event);
 }
+void Tool::OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) {
+  PaintCustomCursor(dc, view, draw);
+  Paint(dc, view, draw);
+}
+
+void Tool::PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
+                             const DrawData &draw) {
+  const wxPoint m = view.Convert(mousePosition);
+  dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
+  dc->DrawLine(m.x, 0, m.x, draw.height);
+  dc->DrawLine(0, m.y, draw.width, m.y);
+}
 
 class MoveTool : public Tool {
  public:
-  MoveTool(const vec2f& s, const vec2f& m) : Tool(m), start(s) {}
+  MoveTool(const vec2f& s, const vec2f& m) : Tool(m), start(s) {
+    mouseButtonDown = true;
+  }
   ~MoveTool() {}
 
   void MouseMoved(GraphData* data, wxMouseEvent& event) override {
@@ -146,25 +160,23 @@ class MoveTool : public Tool {
     const vec2f move = vec2f::FromTo(start, mousePosition);
 
     if(!mouseButtonDown) {
+      data->pop = true;
       for(std::weak_ptr<Object> wo : data->selected) {
         std::shared_ptr<Object> o = wo.lock();
         if(o.get()) {
           o->MoveApply(move);
-          data->pop = true;
         }
       }
     }
   }
 
-  void OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) override {
-    const wxPoint m = view.Convert(mousePosition);
-    dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
-    dc->DrawLine(m.x, 0, m.x, draw.height);
-    dc->DrawLine(0, m.y, draw.width, m.y);
-
-    const wxPoint s = view.Convert(start);
-    dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
-    dc->DrawLine(s, m);
+  void Paint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) override {
+    if(mouseButtonDown) {
+      const wxPoint m = view.Convert(mousePosition);
+      const wxPoint s = view.Convert(start);
+      dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
+      dc->DrawLine(s, m);
+    }
   }
 
   vec2f start;
@@ -208,17 +220,7 @@ class SelectTool : public Tool {
     }
   }
 
-  void OnPaint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
-    const wxPoint m = view.Convert(mousePosition);
-    dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
-    dc->DrawLine(m.x, 0, m.x, draw.height);
-    dc->DrawLine(0, m.y, draw.width, m.y);
-
-    if(mouseButtonDown) {
-      const wxPoint s = view.Convert(start);
-      dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
-      dc->DrawLine(s, m);
-    }
+  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
   }
 
   vec2f start;

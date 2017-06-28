@@ -90,16 +90,20 @@ class Tool {
   void OnMouseMoved(GraphData* data, wxMouseEvent& event);
   void OnMouseButton(GraphData *data, wxMouseEvent &event, bool down);
 
+  void OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw);
+
   virtual void MouseMoved(GraphData* data, wxMouseEvent& event) = 0;
   virtual void MouseButton(GraphData *data, wxMouseEvent &event) = 0;
-  virtual void OnPaint(wxPaintDC *dc, const ViewData &view,
-                       const DrawData &draw) = 0;
+  virtual void Paint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) = 0;
 
   virtual void Refresh(GraphData* data, wxMouseEvent& event);
 
  protected:
   bool mouseButtonDown;
   vec2f mousePosition;
+
+  void PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
+                         const DrawData &draw);
 };
 
 class Graph : public wxPanel
