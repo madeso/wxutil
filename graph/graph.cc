@@ -156,7 +156,7 @@ class MoveTool : public Tool {
     }
   }
 
-  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+  void OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) override {
     const wxPoint m = view.Convert(mousePosition);
     dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
     dc->DrawLine(m.x, 0, m.x, draw.height);
@@ -208,7 +208,7 @@ class SelectTool : public Tool {
     }
   }
 
-  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+  void OnPaint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
     const wxPoint m = view.Convert(mousePosition);
     dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
     dc->DrawLine(m.x, 0, m.x, draw.height);
@@ -278,7 +278,7 @@ void Graph::OnPaint(wxPaintEvent&) {
     o->Draw(&dc, view, draw);
   }
 
-  tool().Paint(&dc, view, draw);
+  tool().OnPaint(&dc, view, draw);
 }
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {
