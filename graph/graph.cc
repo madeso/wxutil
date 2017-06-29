@@ -106,6 +106,7 @@ bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
   return false;
 }
 
+// todo: why does a GraphData function take a GraphData? Seems like a bug!
 void GraphData::Step(GraphData* data, wxMouseEvent& event) {
   if(pop) {
     if(tools.size() > 1) {
@@ -128,6 +129,34 @@ void GraphData::Add(std::shared_ptr<Tool> tool) {
 
 Tool& GraphData::tool() {
   return *tools.rbegin()->get();
+}
+
+std::vector<std::shared_ptr<Object>> GraphData::HitTestAll(const vec2f& mousePosition) {
+  std::vector<std::shared_ptr<Object>> ret;
+  for(std::shared_ptr<Object> o : objects) {
+    const bool hit = o->HitTest(mousePosition);
+    if(hit) {
+      ret.push_back(o);
+    }
+  }
+
+  return ret;
+}
+
+std::shared_ptr<Node> GraphData::HitTestTopMost(const vec2f& mousePosition) {
+  // todo: currently bottom most, fix this
+  for(std::shared_ptr<Object> o : objects) {
+    const bool hit = o->HitTest(mousePosition);
+    if(hit) {
+      std::shared_ptr<Node> ret = std::dynamic_pointer_cast<Node>(o);
+      if(ret.get()) {
+        return ret;
+      }
+    }
+  }
+
+  std::shared_ptr<Node> ret;
+  return ret;
 }
 
 Tool::Tool() : mousePosition(0,0), mouseButtonDown(false) {}
@@ -233,11 +262,9 @@ class SelectTool : public Tool {
         // if no shift, clear previous selection
         data->selected.clear();
       }
-      for(std::shared_ptr<Object> o : data->objects) {
-        const bool hit = o->HitTest(mousePosition);
-        if(hit) {
-          data->selected.push_back(o);
-        }
+      auto hit = data->HitTestAll(mousePosition);
+      for(std::shared_ptr<Object> o : hit) {
+        data->selected.push_back(o);
       }
     }
   }
@@ -246,6 +273,32 @@ class SelectTool : public Tool {
   }
 
   vec2f start;
+};
+
+class LinkTool : public Tool {
+ public:
+  LinkTool() {}
+  ~LinkTool() {}
+
+  void MouseMoved(GraphData* data, wxMouseEvent& event) override {
+  }
+
+  void MouseButton(GraphData *data, wxMouseEvent &event) override {
+    if(!mouseButtonDown) {
+      first_node = data->HitTestTopMost(mousePosition);
+    }
+  }
+
+  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+    if(first_node.get()) {
+      const wxPoint m = view.Convert(mousePosition);
+      const wxPoint s = view.Convert(first_node->rect.GetAbsoluteCenterPos());
+      dc->SetPen( wxPen(wxColor(255,0,0), 1, wxPENSTYLE_LONG_DASH ) );
+      dc->DrawLine(s, m);
+    }
+  }
+
+  std::shared_ptr<Node> first_node;
 };
 
 
@@ -330,6 +383,11 @@ void Graph::OnKeyReleased(wxKeyEvent& event) {event.Skip();}
 void Graph::DeleteSelected() {
   data.DeleteSelected();
   Invalidate();
+}
+
+void Graph::LinkNodes() {
+  std::shared_ptr<Tool> t(new LinkTool());
+  data.Add(t);
 }
 
 void Graph::Invalidate(wxMouseEvent& event) {

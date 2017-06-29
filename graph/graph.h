@@ -85,6 +85,9 @@ class GraphData {
   void Step();
   void Add(std::shared_ptr<Tool> tool);
   Tool& tool();
+
+  std::vector<std::shared_ptr<Object>> HitTestAll(const vec2f& mousePosition);
+  std::shared_ptr<Node> HitTestTopMost(const vec2f& mousePosition);
 };
 
 class Tool {
@@ -133,6 +136,9 @@ class Graph : public wxPanel
   GraphData data;
 
   void DeleteSelected();
+
+  // temporary
+  void LinkNodes();
 
   void Invalidate(wxMouseEvent& event);
   void Invalidate();
