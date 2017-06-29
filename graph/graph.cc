@@ -36,7 +36,7 @@ Sizef ViewData::Convert(const wxSize& s) const {
 DrawData::DrawData() : selected(false), height(0), width(0) {
 }
 
-Object::Object() { }
+Object::Object() : removeThis(false) { }
 Object::~Object() { }
 
 Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t), movement(0,0) { }
@@ -79,6 +79,22 @@ void Node::MoveCancel() {
 GraphData::GraphData() : pop(false) {
 }
 
+void GraphData::DeleteSelected() {
+  for(std::weak_ptr<Object> weak : selected) {
+    std::shared_ptr<Object> strong = weak.lock();
+    if( strong.get() ) {
+      strong->removeThis = true;
+    }
+  }
+}
+void GraphData::RemoveTaggedItems() {
+  objects.erase(std::remove_if(objects.begin(), objects.end(), [](std::shared_ptr<Object> o){ return o->removeThis; }), objects.end());
+}
+
+void GraphData::RemoveDeadSelections() {
+  selected.erase(std::remove_if(selected.begin(), selected.end(), [](std::weak_ptr<Object> w){ std::shared_ptr<Object> o = w.lock(); return o.get() == nullptr; }), selected.end());
+}
+
 bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
   for(std::weak_ptr<Object> weak : selected) {
     std::shared_ptr<Object> strong = weak.lock();
@@ -98,6 +114,12 @@ void GraphData::Step(GraphData* data, wxMouseEvent& event) {
     }
     pop = false;
   }
+  Step();
+}
+
+void GraphData::Step() {
+  RemoveTaggedItems();
+  RemoveDeadSelections();
 }
 
 void GraphData::Add(std::shared_ptr<Tool> tool) {
@@ -294,12 +316,6 @@ void Graph::OnMouseButton(wxMouseEvent &event, bool d) {
   Invalidate(event);
 }
 
-void Graph::Invalidate(wxMouseEvent& event) {
-  data.Step(&data, event);
-  Refresh();
-  Update();
-}
-
 void Graph::OnMouseUp(wxMouseEvent& event) { OnMouseButton(event, false);}
 void Graph::OnMouseDown(wxMouseEvent& event) { OnMouseButton(event, true);}
 void Graph::OnMouseWheelMoved(wxMouseEvent& event) {}
@@ -308,9 +324,26 @@ void Graph::OnMouseLeftWindow(wxMouseEvent& event) {
   tool().OnMouseMoved(&data, event);
   Invalidate(event);
 }
-void Graph::OnKeyPressed(wxKeyEvent& event) {}
-void Graph::OnKeyReleased(wxKeyEvent& event) {}
+void Graph::OnKeyPressed(wxKeyEvent& event) {event.Skip();}
+void Graph::OnKeyReleased(wxKeyEvent& event) {event.Skip();}
 
+void Graph::DeleteSelected() {
+  data.DeleteSelected();
+  Invalidate();
+}
+
+void Graph::Invalidate(wxMouseEvent& event) {
+  data.Step(&data, event);
+  Redraw();
+}
+void Graph::Invalidate() {
+  data.Step();
+  Redraw();
+}
+void Graph::Redraw() {
+  Refresh();
+  Update();
+}
 
 Tool& Graph::tool() {
   return data.tool();

@@ -45,6 +45,8 @@ class Object {
   virtual void MoveSet(const vec2f& m) = 0;
   virtual void MoveApply(const vec2f& m) = 0;
   virtual void MoveCancel() = 0;
+
+  bool removeThis;
 };
 
 class Node : public Object {
@@ -75,8 +77,12 @@ class GraphData {
   std::vector<std::shared_ptr<Tool>> tools;
   bool pop;
 
+  void DeleteSelected();
+  void RemoveTaggedItems();
+  void RemoveDeadSelections();
   bool IsSelected(std::shared_ptr<Object> o);
   void Step(GraphData* data, wxMouseEvent& event);
+  void Step();
   void Add(std::shared_ptr<Tool> tool);
   Tool& tool();
 };
@@ -126,7 +132,11 @@ class Graph : public wxPanel
 
   GraphData data;
 
+  void DeleteSelected();
+
   void Invalidate(wxMouseEvent& event);
+  void Invalidate();
+  void Redraw();
 
   Tool& tool();
 };
