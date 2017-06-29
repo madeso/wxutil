@@ -75,11 +75,11 @@ class GraphData {
   std::vector<std::shared_ptr<Object>> objects;
   std::vector<std::weak_ptr<Object>> selected;
   std::vector<std::shared_ptr<Tool>> tools;
-  bool pop;
 
   void DeleteSelected();
   void RemoveTaggedItems();
   void RemoveDeadSelections();
+  bool RemoveDeadTools(); // returns true if some tools were removed
   bool IsSelected(std::shared_ptr<Object> o);
   void Step(wxMouseEvent& event);
   void Step();
@@ -107,9 +107,13 @@ class Tool {
 
   virtual void Refresh(GraphData* data, wxMouseEvent& event);
 
+  bool ShouldRemoveThis() const;
+
  protected:
   bool mouseButtonDown;
   vec2f mousePosition;
+
+  bool removeThis;
 
   void PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
                          const DrawData &draw);

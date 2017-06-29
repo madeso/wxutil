@@ -76,7 +76,7 @@ void Node::MoveCancel() {
   movement = vec2f(0,0);
 }
 
-GraphData::GraphData() : pop(false) {
+GraphData::GraphData() {
 }
 
 void GraphData::DeleteSelected() {
@@ -106,13 +106,16 @@ bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
   return false;
 }
 
+bool GraphData::RemoveDeadTools() {
+  auto remove_start = std::remove_if(tools.begin(), tools.end(), [](std::shared_ptr<Tool> t){ return t->ShouldRemoveThis(); });
+  const bool will_remove_items = remove_start != tools.end();
+  tools.erase(remove_start, tools.end());
+  return will_remove_items;
+}
+
 void GraphData::Step(wxMouseEvent& event) {
-  if(pop) {
-    if(tools.size() > 1) {
-      tools.pop_back();
-      tool().Refresh(this, event);
-    }
-    pop = false;
+  if(RemoveDeadTools()) {
+    tool().Refresh(this, event);
   }
   Step();
 }
@@ -158,7 +161,7 @@ std::shared_ptr<Node> GraphData::HitTestTopMost(const vec2f& mousePosition) {
   return ret;
 }
 
-Tool::Tool() : mousePosition(0,0), mouseButtonDown(false) {}
+Tool::Tool() : mousePosition(0,0), mouseButtonDown(false), removeThis(false) {}
 Tool::Tool(const vec2f& m) : mousePosition(m), mouseButtonDown(false) {}
 Tool::~Tool() {}
 void Tool::OnMouseMoved(GraphData* data, wxMouseEvent& event) {
@@ -187,6 +190,10 @@ void Tool::PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
   dc->DrawLine(0, m.y, draw.width, m.y);
 }
 
+bool Tool::ShouldRemoveThis() const {
+  return removeThis;
+}
+
 class MoveTool : public Tool {
  public:
   MoveTool(const vec2f& s, const vec2f& m) : Tool(m), start(s) {
@@ -210,7 +217,7 @@ class MoveTool : public Tool {
     const vec2f move = vec2f::FromTo(start, mousePosition);
 
     if(!mouseButtonDown) {
-      data->pop = true;
+      removeThis = true;
       for(std::weak_ptr<Object> wo : data->selected) {
         std::shared_ptr<Object> o = wo.lock();
         if(o.get()) {
