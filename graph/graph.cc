@@ -300,10 +300,22 @@ class LinkTool : public Tool {
     }
   }
 
+  void PaintHotspot(wxPaintDC *dc, const ViewData &view,
+                         const DrawData &draw, const vec2f& mp) {
+    const int CROSS_SIZE = 20;
+    const wxPoint m = view.Convert(mp);
+    float distance = vec2f::FromTo(mp, mousePosition).GetLength();
+    dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_LONG_DASH ) );
+    dc->SetBrush(wxNullBrush);
+    dc->DrawCircle(m, view.HorizontalConvert(distance));
+    dc->DrawLine(m.x-CROSS_SIZE, m.y-CROSS_SIZE, m.x+CROSS_SIZE, m.y+CROSS_SIZE);
+    dc->DrawLine(m.x-CROSS_SIZE, m.y+CROSS_SIZE, m.x+CROSS_SIZE, m.y-CROSS_SIZE);
+  }
+
   void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
     if(hovering_node && hovering_node != first_node) {
       const vec2f p = hovering_node->rect.GetAbsoluteCenterPos();
-      PaintCustomCursor(dc, view, draw, p);
+      PaintHotspot(dc, view, draw, p);
     }
 
     if(first_node.get()) {
