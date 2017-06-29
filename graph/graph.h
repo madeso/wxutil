@@ -81,7 +81,7 @@ class GraphData {
   void RemoveTaggedItems();
   void RemoveDeadSelections();
   bool IsSelected(std::shared_ptr<Object> o);
-  void Step(GraphData* data, wxMouseEvent& event);
+  void Step(wxMouseEvent& event);
   void Step();
   void Add(std::shared_ptr<Tool> tool);
   Tool& tool();

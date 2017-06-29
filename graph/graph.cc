@@ -106,12 +106,11 @@ bool GraphData::IsSelected(std::shared_ptr<Object> specific_object) {
   return false;
 }
 
-// todo: why does a GraphData function take a GraphData? Seems like a bug!
-void GraphData::Step(GraphData* data, wxMouseEvent& event) {
+void GraphData::Step(wxMouseEvent& event) {
   if(pop) {
     if(tools.size() > 1) {
       tools.pop_back();
-      tool().Refresh(data, event);
+      tool().Refresh(this, event);
     }
     pop = false;
   }
@@ -391,7 +390,7 @@ void Graph::LinkNodes() {
 }
 
 void Graph::Invalidate(wxMouseEvent& event) {
-  data.Step(&data, event);
+  data.Step(event);
   Redraw();
 }
 void Graph::Invalidate() {
