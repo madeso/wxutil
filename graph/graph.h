@@ -114,9 +114,6 @@ class Tool {
   vec2f mousePosition;
 
   bool removeThis;
-
-  void PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
-                         const DrawData &draw);
 };
 
 class Graph : public wxPanel

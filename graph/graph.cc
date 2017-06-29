@@ -177,17 +177,18 @@ void Tool::OnMouseButton(GraphData *data, wxMouseEvent &event, bool d) {
   mouseButtonDown = d;
   MouseButton(data, event);
 }
-void Tool::OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) {
-  PaintCustomCursor(dc, view, draw);
-  Paint(dc, view, draw);
-}
 
-void Tool::PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
-                             const DrawData &draw) {
-  const wxPoint m = view.Convert(mousePosition);
+void PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
+                       const DrawData &draw, const vec2f& mp) {
+  const wxPoint m = view.Convert(mp);
   dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
   dc->DrawLine(m.x, 0, m.x, draw.height);
   dc->DrawLine(0, m.y, draw.width, m.y);
+}
+
+void Tool::OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) {
+  PaintCustomCursor(dc, view, draw, mousePosition);
+  Paint(dc, view, draw);
 }
 
 bool Tool::ShouldRemoveThis() const {
@@ -287,23 +288,35 @@ class LinkTool : public Tool {
   ~LinkTool() {}
 
   void MouseMoved(GraphData* data, wxMouseEvent& event) override {
+    hovering_node = data->HitTestTopMost(mousePosition);
   }
 
   void MouseButton(GraphData *data, wxMouseEvent &event) override {
     if(!mouseButtonDown) {
       first_node = data->HitTestTopMost(mousePosition);
+      if(first_node == nullptr) {
+        removeThis = true;
+      }
     }
   }
 
   void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+    if(hovering_node && hovering_node != first_node) {
+      const vec2f p = hovering_node->rect.GetAbsoluteCenterPos();
+      PaintCustomCursor(dc, view, draw, p);
+    }
+
     if(first_node.get()) {
-      const wxPoint m = view.Convert(mousePosition);
+      vec2f t = mousePosition;
+      const vec2f p = hovering_node && hovering_node != first_node ? hovering_node->rect.GetAbsoluteCenterPos() : mousePosition;
+      const wxPoint m = view.Convert(p);
       const wxPoint s = view.Convert(first_node->rect.GetAbsoluteCenterPos());
       dc->SetPen( wxPen(wxColor(255,0,0), 1, wxPENSTYLE_LONG_DASH ) );
       dc->DrawLine(s, m);
     }
   }
 
+  std::shared_ptr<Node> hovering_node;
   std::shared_ptr<Node> first_node;
 };
 
