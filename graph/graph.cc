@@ -43,7 +43,7 @@ Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t), movement(0,
 Node::~Node() { }
 
 void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const {
-  const Rectf currentRect = rect.OffsetCopy(movement);
+  const Rectf currentRect = GetModifiedRect();
 
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
   wxColor c (100, 255, 255);
@@ -57,6 +57,11 @@ void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const
   const Sizef size = view.Convert(dc->GetTextExtent(text.c_str()));
   vec2f offset =  currentRect.GetSize().CalculateCenterOffsetFor(size);
   dc->DrawText(text.c_str(), view.Convert(currentRect.GetPosition() + offset));
+}
+
+Rectf Node::GetModifiedRect() const {
+  const Rectf currentRect = rect.OffsetCopy(movement);
+  return currentRect;
 }
 
 bool Node::HitTest(const vec2f& pos) const {
@@ -90,9 +95,8 @@ class Link : public Object {
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      // todo: get modified rect so we can draw the updated edge while the nodes are moving
-      const wxPoint fp = view.Convert(f->rect.GetAbsoluteCenterPos());
-      const wxPoint tp = view.Convert(t->rect.GetAbsoluteCenterPos());
+      const wxPoint fp = view.Convert(f->GetModifiedRect().GetAbsoluteCenterPos());
+      const wxPoint tp = view.Convert(t->GetModifiedRect().GetAbsoluteCenterPos());
       dc->SetPen( wxPen(wxColor(0,255,0), 1) );
       dc->DrawLine(fp, tp);
     }

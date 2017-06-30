@@ -61,6 +61,8 @@ class Node : public Object {
   void MoveApply(const vec2f& m) override ;
   void MoveCancel() override ;
 
+  Rectf GetModifiedRect() const;
+
   Rectf rect;
   vec2f movement;
   std::string text;
