@@ -84,6 +84,7 @@ class Link : public Object {
   std::weak_ptr<Node> from;
   std::weak_ptr<Node> to;
 
+  // todo: add a better edge drawing, possible draw all edges before the nodes
   void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override {
     std::shared_ptr<Node> f = from.lock();
     std::shared_ptr<Node> t = to.lock();
@@ -98,6 +99,7 @@ class Link : public Object {
   }
 
   bool HitTest(const vec2f& pos) const override {
+    // todo: implement hit test
     return false;
   }
 
