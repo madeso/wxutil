@@ -293,9 +293,19 @@ class LinkTool : public Tool {
 
   void MouseButton(GraphData *data, wxMouseEvent &event) override {
     if(!mouseButtonDown) {
-      first_node = data->HitTestTopMost(mousePosition);
-      if(first_node == nullptr) {
+      std::shared_ptr<Node> hit_node = data->HitTestTopMost(mousePosition);
+
+      if(first_node) {
+        // linking from first_node
+        // todo: create link from first_node to hit_node, possible creating hit_node if null
         removeThis = true;
+      }
+      else {
+        if(hit_node == nullptr) {
+          removeThis = true;
+          return;
+        }
+        first_node = hit_node;
       }
     }
   }
