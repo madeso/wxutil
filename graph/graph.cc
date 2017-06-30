@@ -76,6 +76,36 @@ void Node::MoveCancel() {
   movement = vec2f(0,0);
 }
 
+class Link : public Object {
+ public:
+  Link(std::shared_ptr<Node> f, std::shared_ptr<Node> t) : from(f), to(t) {}
+  ~Link() {}
+
+  std::weak_ptr<Node> from;
+  std::weak_ptr<Node> to;
+
+  void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override {
+    std::shared_ptr<Node> f = from.lock();
+    std::shared_ptr<Node> t = to.lock();
+    if( f && t ) {
+      // todo: remove self if the nodes has been removed
+      // todo: get modified rect so we can draw the updated edge while the nodes are moving
+      const wxPoint fp = view.Convert(f->rect.GetAbsoluteCenterPos());
+      const wxPoint tp = view.Convert(t->rect.GetAbsoluteCenterPos());
+      dc->SetPen( wxPen(wxColor(0,255,0), 1) );
+      dc->DrawLine(fp, tp);
+    }
+  }
+
+  bool HitTest(const vec2f& pos) const override {
+    return false;
+  }
+
+  void MoveSet(const vec2f& m) override {}
+  void MoveApply(const vec2f& m) override {}
+  void MoveCancel() override {}
+};
+
 GraphData::GraphData() {
 }
 
@@ -298,6 +328,10 @@ class LinkTool : public Tool {
       if(first_node) {
         // linking from first_node
         // todo: create link from first_node to hit_node, possible creating hit_node if null
+        if(hit_node) {
+          std::shared_ptr<Object> link(new Link(first_node, hit_node));
+          data->objects.push_back(link);
+        }
         removeThis = true;
       }
       else {
