@@ -95,10 +95,23 @@ class Link : public Object {
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      const wxPoint fp = view.Convert(f->GetModifiedRect().GetAbsoluteCenterPos());
-      const wxPoint tp = view.Convert(t->GetModifiedRect().GetAbsoluteCenterPos());
-      dc->SetPen( wxPen(wxColor(0,255,0), 1) );
-      dc->DrawLine(fp, tp);
+      const vec2f fpp = f->GetModifiedRect().GetAbsoluteCenterPos();
+      const vec2f tpp = t->GetModifiedRect().GetAbsoluteCenterPos();
+
+      const line2f::Collision fc = f->GetModifiedRect().GetPointOnEdge(line2f::FromTo(fpp, tpp));
+      const line2f::Collision tc = t->GetModifiedRect().GetPointOnEdge(line2f::FromTo(tpp, fpp));
+
+      if(fc.collision && tc.collision) {
+        // nodes must be on top of each other
+        const vec2f fe = fc.point;
+        const vec2f te = tc.point;
+
+        const wxPoint fp = view.Convert(fe);
+        const wxPoint tp = view.Convert(te);
+
+        dc->SetPen( wxPen(wxColor(0,255,0), 1) );
+        dc->DrawLine(fp, tp);
+      }
     }
   }
 
