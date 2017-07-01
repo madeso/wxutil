@@ -251,6 +251,16 @@ class MoveTool : public Tool {
   }
   ~MoveTool() {}
 
+  void OnCancel(GraphData* data) override {
+    for(std::weak_ptr<Object> wo : data->selected) {
+      std::shared_ptr<Object> o = wo.lock();
+      if(o.get()) {
+        o->MoveCancel();
+      }
+    }
+    removeThis = true;
+  }
+
   void MouseMoved(GraphData* data, wxMouseEvent& event) override {
     const vec2f move = vec2f::FromTo(start, mousePosition);
 
@@ -305,6 +315,8 @@ class SelectTool : public Tool {
     }
   }
 
+  void OnCancel(GraphData* data) override {}
+
   void MouseButton(GraphData *data, wxMouseEvent &event) override {
     if(mouseButtonDown) {
       start = mousePosition;
@@ -338,6 +350,10 @@ class LinkTool : public Tool {
 
   void MouseMoved(GraphData* data, wxMouseEvent& event) override {
     hovering_node = data->HitTestTopMost(mousePosition);
+  }
+
+  void OnCancel(GraphData* data) override {
+    removeThis = true;
   }
 
   void MouseButton(GraphData *data, wxMouseEvent &event) override {
@@ -471,8 +487,26 @@ void Graph::OnMouseLeftWindow(wxMouseEvent& event) {
   tool().OnMouseMoved(&data, event);
   Invalidate(event);
 }
-void Graph::OnKeyPressed(wxKeyEvent& event) {event.Skip();}
-void Graph::OnKeyReleased(wxKeyEvent& event) {event.Skip();}
+
+enum {
+  ABORT_KEY = wxKeyCode::WXK_ESCAPE
+};
+
+void Graph::OnKeyPressed(wxKeyEvent& event) {
+  if(event.m_keyCode == ABORT_KEY) {
+    return;
+  }
+  event.Skip();
+}
+
+void Graph::OnKeyReleased(wxKeyEvent& event) {
+  if(event.m_keyCode == ABORT_KEY) {
+    tool().OnCancel(&data);
+    Invalidate();
+    return;
+  }
+  event.Skip();
+}
 
 void Graph::DeleteSelected() {
   data.DeleteSelected();
