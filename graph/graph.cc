@@ -114,8 +114,19 @@ class OptionalPoint {
   OptionalPoint(bool hp, const vec2f& p) : hasPoint(hp), point(p) {};
 };
 
+void DrawArrowHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, const vec2f& to, const Angle& a, float distance) {
+  const vec2f dir = vec2f::FromTo(to, from).GetNormalized();
+  const vec2f dira = dir.GetRotated(a);
+  const vec2f dirb = dir.GetRotated(-a);
+
+  // todo: distance should perhaps be specified in view coordinates not in world coordinates
+  dc->DrawLine(view.Convert(to), view.Convert(to + dira*distance));
+  dc->DrawLine(view.Convert(to), view.Convert(to + dirb*distance));
+}
+
 void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp) {
   if(fp.hasPoint && tp.hasPoint) {
+    DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
     dc->DrawLine(view.Convert(fp.point), view.Convert(tp.point));
   }
 }
@@ -134,7 +145,7 @@ class Link : public Object {
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      dc->SetPen( wxPen(wxColor(0,255,0), 1) );
+      dc->SetPen( wxPen(wxColor(0,0,0), 1) );
       DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f));
     }
   }
