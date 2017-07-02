@@ -81,6 +81,45 @@ void Node::MoveCancel() {
   movement = vec2f(0,0);
 }
 
+class OptionalPoint {
+ public:
+  bool hasPoint;
+  vec2f point;
+
+  static OptionalPoint NoPoint() {
+    return OptionalPoint(false, vec2f(0,0));
+  }
+
+  static OptionalPoint NodeCollision(const Node& fromNode, const OptionalPoint& oto) {
+    if(oto.hasPoint == false) return NoPoint();
+
+    const vec2f to = oto.point;
+
+    const Rectf r = fromNode.GetModifiedRect();
+    const vec2f fpp = r.GetAbsoluteCenterPos();
+
+    const line2f::Collision fc = r.GetPointOnEdge(line2f::FromTo(fpp, to));
+
+    if(fc.collision ) {
+      return fc.point;
+    }
+    else {
+      return NoPoint();
+    }
+  }
+
+  OptionalPoint(const vec2f& p) : hasPoint(true), point(p) {};
+  OptionalPoint(const Node& node) : hasPoint(true), point(node.GetModifiedRect().GetAbsoluteCenterPos()) {}
+ private:
+  OptionalPoint(bool hp, const vec2f& p) : hasPoint(hp), point(p) {};
+};
+
+void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp) {
+  if(fp.hasPoint && tp.hasPoint) {
+    dc->DrawLine(view.Convert(fp.point), view.Convert(tp.point));
+  }
+}
+
 class Link : public Object {
  public:
   Link(std::shared_ptr<Node> f, std::shared_ptr<Node> t) : from(f), to(t) {}
@@ -95,23 +134,8 @@ class Link : public Object {
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      const vec2f fpp = f->GetModifiedRect().GetAbsoluteCenterPos();
-      const vec2f tpp = t->GetModifiedRect().GetAbsoluteCenterPos();
-
-      const line2f::Collision fc = f->GetModifiedRect().GetPointOnEdge(line2f::FromTo(fpp, tpp));
-      const line2f::Collision tc = t->GetModifiedRect().GetPointOnEdge(line2f::FromTo(tpp, fpp));
-
-      if(fc.collision && tc.collision) {
-        // nodes must be on top of each other
-        const vec2f fe = fc.point;
-        const vec2f te = tc.point;
-
-        const wxPoint fp = view.Convert(fe);
-        const wxPoint tp = view.Convert(te);
-
-        dc->SetPen( wxPen(wxColor(0,255,0), 1) );
-        dc->DrawLine(fp, tp);
-      }
+      dc->SetPen( wxPen(wxColor(0,255,0), 1) );
+      DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f));
     }
   }
 
@@ -398,12 +422,11 @@ class LinkTool : public Tool {
     }
 
     if(first_node.get()) {
-      vec2f t = mousePosition;
-      const vec2f p = hovering_node && hovering_node != first_node ? hovering_node->rect.GetAbsoluteCenterPos() : mousePosition;
-      const wxPoint m = view.Convert(p);
-      const wxPoint s = view.Convert(first_node->rect.GetAbsoluteCenterPos());
       dc->SetPen( wxPen(wxColor(255,0,0), 1, wxPENSTYLE_LONG_DASH ) );
-      dc->DrawLine(s, m);
+
+      const OptionalPoint to = hovering_node && hovering_node != first_node ? OptionalPoint::NodeCollision(*hovering_node, *first_node) : mousePosition;
+
+      DrawEdge(dc, view, OptionalPoint::NodeCollision(*first_node, to), to);
     }
   }
 
