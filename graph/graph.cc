@@ -124,9 +124,36 @@ void DrawArrowHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, const
   dc->DrawLine(view.Convert(to), view.Convert(to + dirb*distance));
 }
 
-void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp) {
+vec2f GetTridentCollision(const vec2f& from, const vec2f& dir, const float distance, float scale, Node* node) {
+  if(node) {
+    const vec2f to = from + dir * distance * scale;
+    const line2f::Collision c = node->GetModifiedRect().GetPointOnEdge(line2f::FromTo(from, to));
+    if(c.collision) {
+      return c.point;
+    }
+  }
+
+  return from + dir * distance;
+}
+
+void DrawTridentHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, const vec2f& to, float distanceFromTo, float distanceFromCenter, Node* endNode) {
+  const vec2f dir1 = vec2f::FromTo(from, to).GetNormalized();
+  const vec2f dir2 = dir1.GetRotated(Angle::FromDegrees(90));
+
+  // todo: distance should perhaps be specified in view coordinates not in world coordinates
+  const vec2f connection = to - dir1*distanceFromTo;
+  const vec2f a = connection - dir2*distanceFromCenter;
+  const vec2f b = connection + dir2*distanceFromCenter;
+  dc->DrawLine(view.Convert(a), view.Convert(b));
+  const float scale = 3;
+  dc->DrawLine(view.Convert(a), view.Convert(GetTridentCollision(a, dir1, distanceFromTo, scale, endNode)));
+  dc->DrawLine(view.Convert(b), view.Convert(GetTridentCollision(b, dir1, distanceFromTo, scale, endNode)));
+}
+
+void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
   if(fp.hasPoint && tp.hasPoint) {
-    DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
+    // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
+    DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
     dc->DrawLine(view.Convert(fp.point), view.Convert(tp.point));
   }
 }
@@ -146,7 +173,7 @@ class Link : public Object {
     if( f && t ) {
       // todo: remove self if the nodes has been removed
       dc->SetPen( wxPen(wxColor(0,0,0), 1) );
-      DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f));
+      DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f), f.get(), t.get());
     }
   }
 
@@ -437,7 +464,7 @@ class LinkTool : public Tool {
 
       const OptionalPoint to = hovering_node && hovering_node != first_node ? OptionalPoint::NodeCollision(*hovering_node, *first_node) : mousePosition;
 
-      DrawEdge(dc, view, OptionalPoint::NodeCollision(*first_node, to), to);
+      DrawEdge(dc, view, OptionalPoint::NodeCollision(*first_node, to), to, first_node.get(), hovering_node.get());
     }
   }
 
