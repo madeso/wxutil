@@ -86,8 +86,22 @@ class OptionalPoint {
   bool hasPoint;
   vec2f point;
 
+  operator bool() const {
+    return hasPoint;
+  }
+
   static OptionalPoint NoPoint() {
     return OptionalPoint(false, vec2f(0,0));
+  }
+
+  static OptionalPoint NodeCollision(std::weak_ptr<Node> fromNode, const OptionalPoint& oto) {
+    std::shared_ptr<Node> node = fromNode.lock();
+    if(node) {
+      return NodeCollision(*node, oto);
+    }
+    else {
+      return NoPoint();
+    }
   }
 
   static OptionalPoint NodeCollision(const Node& fromNode, const OptionalPoint& oto) {
@@ -102,6 +116,16 @@ class OptionalPoint {
 
     if(fc.collision ) {
       return fc.point;
+    }
+    else {
+      return NoPoint();
+    }
+  }
+
+  static OptionalPoint FromWeakNode(std::weak_ptr<Node> weak) {
+    std::shared_ptr<Node> shared = weak.lock();
+    if(shared) {
+      return OptionalPoint(*shared);
     }
     else {
       return NoPoint();
@@ -158,6 +182,14 @@ void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, cons
   }
 }
 
+void DrawPoly(wxPaintDC* dc, const ViewData& view, const Poly2f& poly) {
+  if(poly.Size() < 3) return;
+
+  for(int i=0; i<poly.Size()+1; ++i) {
+    dc->DrawLine( view.Convert(poly[i]), view.Convert(poly[i+1]));
+  }
+}
+
 class Link : public Object {
  public:
   Link(std::shared_ptr<Node> f, std::shared_ptr<Node> t) : from(f), to(t) {}
@@ -175,16 +207,43 @@ class Link : public Object {
       dc->SetPen( wxPen(wxColor(0,0,0), 1) );
       DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f), f.get(), t.get());
     }
+
+    if(draw.selected) {
+      const Poly2f p = GetPolygon();
+      DrawPoly(dc, view, p);
+    }
   }
 
   bool HitTest(const vec2f& pos) const override {
-    // todo: implement hit test
-    return false;
+    const Poly2f p = GetPolygon();
+    const bool ht = p.IsInside(pos);
+    return ht;
   }
 
   void MoveSet(const vec2f& m) override {}
   void MoveApply(const vec2f& m) override {}
   void MoveCancel() override {}
+
+  Poly2f GetPolygon() const {
+    Poly2f p;
+
+    const OptionalPoint f = OptionalPoint::NodeCollision(from, OptionalPoint::FromWeakNode(to));
+    const OptionalPoint t = OptionalPoint::NodeCollision(to, OptionalPoint::FromWeakNode(from));
+    if( f && t ) {
+      // todo: base distance on camera zoom?
+      const float distance = 5;
+      const vec2f dir = vec2f::FromTo(f.point, t.point).GetNormalized();
+      const vec2f up = dir.GetRotated(Angle::FromDegrees(90)) * distance;
+      const vec2f dix = dir * distance;
+
+      p.Add(f.point - dix + up);
+      p.Add(t.point + dix + up);
+      p.Add(t.point + dix - up);
+      p.Add(f.point - dix - up);
+    }
+
+    return p;
+  }
 };
 
 GraphData::GraphData() {

@@ -9,6 +9,7 @@
 #include "wx.h"
 
 #include "core/rect.h"
+#include "core/poly2.h"
 
 class ViewData {
  public:
