@@ -174,11 +174,29 @@ void DrawTridentHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, con
   dc->DrawLine(view.Convert(b), view.Convert(GetTridentCollision(b, dir1, distanceFromTo, scale, endNode)));
 }
 
-void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
+void DrawStraightEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
   if(fp.hasPoint && tp.hasPoint) {
     // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
     DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
     dc->DrawLine(view.Convert(fp.point), view.Convert(tp.point));
+  }
+}
+
+void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
+  if(fp.hasPoint && tp.hasPoint) {
+    // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
+    // DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
+    const vec2f dir = vec2f::FromTo(fp.point, tp.point);
+    const bool xfirst = Abs(dir.x) > Abs(dir.y);
+
+    const float halfy = dir.y / 2;
+    const float halfx = dir.x / 2;
+    const vec2f midpoint1 = xfirst ? vec2f(fp.point.x+halfx, fp.point.y) : vec2f(fp.point.x, fp.point.y+halfy);
+    const vec2f midpoint2 = xfirst ? vec2f(fp.point.x+halfx, tp.point.y) : vec2f(tp.point.x, fp.point.y+halfy);
+
+    dc->DrawLine(view.Convert(fp.point), view.Convert(midpoint1));
+    dc->DrawLine(view.Convert(midpoint1), view.Convert(midpoint2));
+    dc->DrawLine(view.Convert(midpoint2), view.Convert(tp.point));
   }
 }
 
