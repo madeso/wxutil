@@ -42,12 +42,12 @@ Object::~Object() { }
 Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t), movement(0,0) { }
 Node::~Node() { }
 
-void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) const {
+void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& drawContext) const {
   const Rectf currentRect = GetModifiedRect();
 
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
   wxColor c (100, 255, 255);
-  if(draw.selected) {
+  if(drawContext.selected) {
     c = wxColor(255, 255, 255);
   }
   dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(c));
@@ -217,7 +217,7 @@ class Link : public Object {
   std::weak_ptr<Node> to;
 
   // todo: add a better edge drawing, possible draw all edges before the nodes
-  void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) const override {
+  void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& drawContext) const override {
     std::shared_ptr<Node> f = from.lock();
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
@@ -226,7 +226,7 @@ class Link : public Object {
       DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f), f.get(), t.get());
     }
 
-    if(draw.selected) {
+    if(drawContext.selected) {
       const Poly2f p = GetPolygon();
       DrawPoly(dc, view, p);
     }
@@ -594,16 +594,16 @@ void Graph::OnPaint(wxPaintEvent&) {
 
   ViewData view;
 
-  DrawContext draw;
-  draw.width = width;
-  draw.height = height;
+  DrawContext drawContext;
+  drawContext.width = width;
+  drawContext.height = height;
 
   for(std::shared_ptr<Object> o : data.objects) {
-    draw.selected = data.IsSelected(o);
-    o->Draw(&dc, view, draw);
+    drawContext.selected = data.IsSelected(o);
+    o->Draw(&dc, view, drawContext);
   }
 
-  tool().OnPaint(&dc, view, draw);
+  tool().OnPaint(&dc, view, drawContext);
 }
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {
