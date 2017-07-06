@@ -33,7 +33,7 @@ Sizef ViewData::Convert(const wxSize& s) const {
   return Sizef::FromWidthHeight(s.x, s.y);
 }
 
-DrawData::DrawData() : selected(false), height(0), width(0) {
+DrawContext::DrawContext() : selected(false), height(0), width(0) {
 }
 
 Object::Object() : removeThis(false) { }
@@ -42,7 +42,7 @@ Object::~Object() { }
 Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t), movement(0,0) { }
 Node::~Node() { }
 
-void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const {
+void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) const {
   const Rectf currentRect = GetModifiedRect();
 
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
@@ -217,7 +217,7 @@ class Link : public Object {
   std::weak_ptr<Node> to;
 
   // todo: add a better edge drawing, possible draw all edges before the nodes
-  void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override {
+  void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) const override {
     std::shared_ptr<Node> f = from.lock();
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
@@ -367,14 +367,14 @@ void Tool::OnMouseButton(GraphData *data, wxMouseEvent &event, bool d) {
 }
 
 void PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
-                       const DrawData &draw, const vec2f& mp) {
+                       const DrawContext &draw, const vec2f& mp) {
   const wxPoint m = view.Convert(mp);
   dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
   dc->DrawLine(m.x, 0, m.x, draw.height);
   dc->DrawLine(0, m.y, draw.width, m.y);
 }
 
-void Tool::OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) {
+void Tool::OnPaint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw) {
   PaintCustomCursor(dc, view, draw, mousePosition);
   Paint(dc, view, draw);
 }
@@ -426,7 +426,7 @@ class MoveTool : public Tool {
     }
   }
 
-  void Paint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) override {
+  void Paint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw) override {
     if(mouseButtonDown) {
       const wxPoint m = view.Convert(mousePosition);
       const wxPoint s = view.Convert(start);
@@ -476,7 +476,7 @@ class SelectTool : public Tool {
     }
   }
 
-  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+  void Paint(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) override {
   }
 
   vec2f start;
@@ -519,7 +519,7 @@ class LinkTool : public Tool {
   }
 
   void PaintHotspot(wxPaintDC *dc, const ViewData &view,
-                         const DrawData &draw, const vec2f& mp) {
+                         const DrawContext &draw, const vec2f& mp) {
     const int CROSS_SIZE = 20;
     const wxPoint m = view.Convert(mp);
     float distance = vec2f::FromTo(mp, mousePosition).GetLength();
@@ -530,7 +530,7 @@ class LinkTool : public Tool {
     dc->DrawLine(m.x-CROSS_SIZE, m.y+CROSS_SIZE, m.x+CROSS_SIZE, m.y-CROSS_SIZE);
   }
 
-  void Paint(wxPaintDC* dc, const ViewData& view, const DrawData& draw) override {
+  void Paint(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) override {
     if(hovering_node && hovering_node != first_node) {
       const vec2f p = hovering_node->rect.GetAbsoluteCenterPos();
       PaintHotspot(dc, view, draw, p);
@@ -594,7 +594,7 @@ void Graph::OnPaint(wxPaintEvent&) {
 
   ViewData view;
 
-  DrawData draw;
+  DrawContext draw;
   draw.width = width;
   draw.height = height;
 

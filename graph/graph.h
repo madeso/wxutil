@@ -23,9 +23,9 @@ class ViewData {
   Sizef Convert(const wxSize& s) const;
 };
 
-class DrawData {
+class DrawContext {
  public:
-  DrawData();
+  DrawContext();
 
   // is this node selected
   bool selected;
@@ -40,7 +40,7 @@ class Object {
   Object();
   virtual ~Object();
 
-  virtual void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const = 0;
+  virtual void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) const = 0;
   virtual bool HitTest(const vec2f& pos) const = 0;
 
   virtual void MoveSet(const vec2f& m) = 0;
@@ -55,7 +55,7 @@ class Node : public Object {
   Node(const Rectf &r, const std::string& t);
   ~Node();
 
-  void Draw(wxPaintDC* dc, const ViewData& view, const DrawData& draw) const override ;
+  void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) const override ;
   bool HitTest(const vec2f& pos) const override;
 
   void MoveSet(const vec2f& m) override ;
@@ -102,11 +102,11 @@ class Tool {
   void OnMouseMoved(GraphData* data, wxMouseEvent& event);
   void OnMouseButton(GraphData *data, wxMouseEvent &event, bool down);
 
-  void OnPaint(wxPaintDC *dc, const ViewData &view, const DrawData &draw);
+  void OnPaint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw);
 
   virtual void MouseMoved(GraphData* data, wxMouseEvent& event) = 0;
   virtual void MouseButton(GraphData *data, wxMouseEvent &event) = 0;
-  virtual void Paint(wxPaintDC *dc, const ViewData &view, const DrawData &draw) = 0;
+  virtual void Paint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw) = 0;
   virtual void OnCancel(GraphData* data) = 0;
 
   virtual void Refresh(GraphData* data, wxMouseEvent& event);
