@@ -2,6 +2,44 @@
 
 #include "wx/brush.h"
 
+wxColor ToWxColor(const Rgb& c) {
+  return wxColor(c.GetRed() * 255, c.GetGreen() * 255, c.GetBlue() * 255);
+}
+
+DrawCommand::DrawCommand(wxPaintDC *d, const ViewData &v) : dc(d), view(v) {}
+
+void DrawCommand::DrawRectangle(const Rgb &rgb, const Rectf &rect) {
+  dc->SetPen( wxPen(wxColor(0,0,0), 1) );
+  const wxColor c = ToWxColor(rgb);
+  dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(c));
+  dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
+}
+
+void DrawCommand::DrawText(const std::string &text, const Rectf &rect,
+                           const Rgb &color) {
+  dc->SetTextForeground( ToWxColor(color) );
+  const Sizef size = view.Convert(dc->GetTextExtent(text.c_str()));
+  vec2f offset =  rect.GetSize().CalculateCenterOffsetFor(size);
+  dc->DrawText(text.c_str(), view.Convert(rect.GetPosition() + offset));
+}
+
+void DrawCommand::DrawPoly(const Poly2f &poly, const Rgb &color) {
+  if(poly.Size() < 3) return;
+
+  dc->SetPen( wxPen(ToWxColor(color), 1) );
+  for(int i=0; i<poly.Size()+1; ++i) {
+    dc->DrawLine( view.Convert(poly[i]), view.Convert(poly[i+1]));
+  }
+}
+
+void DrawCommand::DrawLines(const std::vector<lineseg2f> lines,
+                            const Rgb &color) {
+  dc->SetPen( wxPen(ToWxColor(color), 1) );
+  for(const lineseg2f& line: lines) {
+    dc->DrawLine(view.Convert(line.from), view.Convert(line.to));
+  }
+}
+
 Sizef GetTextExtents(const std::string &text) {
   wxBitmap temp;
   wxMemoryDC dc;
@@ -42,21 +80,11 @@ Object::~Object() { }
 Node::Node(const Rectf& r, const std::string& t) : rect(r), text(t), movement(0,0) { }
 Node::~Node() { }
 
-void Node::Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& drawContext) const {
+void Node::Draw(DrawCommand* draw, const DrawContext& drawContext) const {
   const Rectf currentRect = GetModifiedRect();
 
-  dc->SetPen( wxPen(wxColor(0,0,0), 1) );
-  wxColor c (100, 255, 255);
-  if(drawContext.selected) {
-    c = wxColor(255, 255, 255);
-  }
-  dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(c));
-  dc->DrawRectangle(view.Convert(currentRect.GetPosition()), view.Convert(currentRect.GetSize()));
-
-  dc->SetTextForeground(wxColor(0,0,0));
-  const Sizef size = view.Convert(dc->GetTextExtent(text.c_str()));
-  vec2f offset =  currentRect.GetSize().CalculateCenterOffsetFor(size);
-  dc->DrawText(text.c_str(), view.Convert(currentRect.GetPosition() + offset));
+  draw->DrawRectangle( Rgb::From(drawContext.selected? Color::AquaMarine : Color::BlanchedAlmond), currentRect);
+  draw->DrawText(text, currentRect, Rgb::From(Color::Black));
 }
 
 Rectf Node::GetModifiedRect() const {
@@ -182,7 +210,7 @@ void DrawStraightEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& 
   }
 }
 
-void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
+void DrawEdge(DrawCommand* draw, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
   if(fp.hasPoint && tp.hasPoint) {
     // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
     // DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
@@ -194,17 +222,11 @@ void DrawEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, cons
     const vec2f midpoint1 = xfirst ? vec2f(fp.point.x+halfx, fp.point.y) : vec2f(fp.point.x, fp.point.y+halfy);
     const vec2f midpoint2 = xfirst ? vec2f(fp.point.x+halfx, tp.point.y) : vec2f(tp.point.x, fp.point.y+halfy);
 
-    dc->DrawLine(view.Convert(fp.point), view.Convert(midpoint1));
-    dc->DrawLine(view.Convert(midpoint1), view.Convert(midpoint2));
-    dc->DrawLine(view.Convert(midpoint2), view.Convert(tp.point));
-  }
-}
-
-void DrawPoly(wxPaintDC* dc, const ViewData& view, const Poly2f& poly) {
-  if(poly.Size() < 3) return;
-
-  for(int i=0; i<poly.Size()+1; ++i) {
-    dc->DrawLine( view.Convert(poly[i]), view.Convert(poly[i+1]));
+    std::vector<lineseg2f> lines;
+    lines.push_back(lineseg2f(fp.point, midpoint1));
+    lines.push_back(lineseg2f(midpoint1, midpoint2));
+    lines.push_back(lineseg2f(midpoint2, tp.point));
+    draw->DrawLines(lines, Rgb::From(Color::Black));
   }
 }
 
@@ -217,18 +239,16 @@ class Link : public Object {
   std::weak_ptr<Node> to;
 
   // todo: add a better edge drawing, possible draw all edges before the nodes
-  void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& drawContext) const override {
+  void Draw(DrawCommand* draw, const DrawContext& drawContext) const override {
     std::shared_ptr<Node> f = from.lock();
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      dc->SetPen( wxPen(wxColor(0,0,0), 1) );
-      DrawEdge(dc, view, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f), f.get(), t.get());
+      DrawEdge(draw, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f), f.get(), t.get());
     }
 
     if(drawContext.selected) {
-      const Poly2f p = GetPolygon();
-      DrawPoly(dc, view, p);
+      draw->DrawPoly(GetPolygon(), Rgb::From(Color::Black));
     }
   }
 
@@ -366,17 +386,16 @@ void Tool::OnMouseButton(GraphData *data, wxMouseEvent &event, bool d) {
   MouseButton(data, event);
 }
 
-void PaintCustomCursor(wxPaintDC *dc, const ViewData &view,
-                       const DrawContext &draw, const vec2f& mp) {
-  const wxPoint m = view.Convert(mp);
-  dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
-  dc->DrawLine(m.x, 0, m.x, draw.height);
-  dc->DrawLine(0, m.y, draw.width, m.y);
+void PaintCustomCursor(DrawCommand* draw, const DrawContext &drawContext, const vec2f& mp) {
+  const wxPoint m = draw->view.Convert(mp);
+  draw->dc->SetPen( wxPen(wxColor(0,0,0), 1, wxPENSTYLE_SOLID ) );
+  draw->dc->DrawLine(m.x, 0, m.x, drawContext.height);
+  draw->dc->DrawLine(0, m.y, drawContext.width, m.y);
 }
 
-void Tool::OnPaint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw) {
-  PaintCustomCursor(dc, view, draw, mousePosition);
-  Paint(dc, view, draw);
+void Tool::OnPaint(DrawCommand* draw, const DrawContext &drawContext) {
+  PaintCustomCursor(draw, drawContext, mousePosition);
+  Paint(draw, drawContext);
 }
 
 bool Tool::ShouldRemoveThis() const {
@@ -426,12 +445,11 @@ class MoveTool : public Tool {
     }
   }
 
-  void Paint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw) override {
+  void Paint(DrawCommand* draw, const DrawContext &drawContext) override {
     if(mouseButtonDown) {
-      const wxPoint m = view.Convert(mousePosition);
-      const wxPoint s = view.Convert(start);
-      dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_SOLID ) );
-      dc->DrawLine(s, m);
+      std::vector<lineseg2f> lines;
+      lines.push_back(lineseg2f(mousePosition, start));
+      draw->DrawLines(lines, Rgb::From(Color::Blue));
     }
   }
 
@@ -476,7 +494,7 @@ class SelectTool : public Tool {
     }
   }
 
-  void Paint(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) override {
+  void Paint(DrawCommand* draw, const DrawContext& drawContext) override {
   }
 
   vec2f start;
@@ -530,18 +548,18 @@ class LinkTool : public Tool {
     dc->DrawLine(m.x-CROSS_SIZE, m.y+CROSS_SIZE, m.x+CROSS_SIZE, m.y-CROSS_SIZE);
   }
 
-  void Paint(wxPaintDC* dc, const ViewData& view, const DrawContext& draw) override {
+  void Paint(DrawCommand* draw, const DrawContext& drawContext) override {
     if(hovering_node && hovering_node != first_node) {
       const vec2f p = hovering_node->rect.GetAbsoluteCenterPos();
-      PaintHotspot(dc, view, draw, p);
+      // PaintHotspot(draw, drawContext, p);
     }
 
     if(first_node.get()) {
-      dc->SetPen( wxPen(wxColor(255,0,0), 1, wxPENSTYLE_LONG_DASH ) );
+      // dc->SetPen( wxPen(wxColor(255,0,0), 1, wxPENSTYLE_LONG_DASH ) );
 
       const OptionalPoint to = hovering_node && hovering_node != first_node ? OptionalPoint::NodeCollision(*hovering_node, *first_node) : mousePosition;
 
-      DrawEdge(dc, view, OptionalPoint::NodeCollision(*first_node, to), to, first_node.get(), hovering_node.get());
+      DrawEdge(draw, OptionalPoint::NodeCollision(*first_node, to), to, first_node.get(), hovering_node.get());
     }
   }
 
@@ -598,12 +616,14 @@ void Graph::OnPaint(wxPaintEvent&) {
   drawContext.width = width;
   drawContext.height = height;
 
+  DrawCommand draw {&dc, view};
+
   for(std::shared_ptr<Object> o : data.objects) {
     drawContext.selected = data.IsSelected(o);
-    o->Draw(&dc, view, drawContext);
+    o->Draw(&draw, drawContext);
   }
 
-  tool().OnPaint(&dc, view, drawContext);
+  tool().OnPaint(&draw, drawContext);
 }
 
 void Graph::OnMouseMoved(wxMouseEvent& event) {

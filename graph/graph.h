@@ -10,6 +10,7 @@
 
 #include "core/rect.h"
 #include "core/poly2.h"
+#include "core/rgb.h"
 
 class ViewData {
  public:
@@ -35,12 +36,25 @@ class DrawContext {
   int width;
 };
 
+class DrawCommand {
+ public:
+  DrawCommand(wxPaintDC* d, const ViewData& v);
+
+  void DrawRectangle(const Rgb& rgb, const Rectf& rect);
+  void DrawText(const std::string& text, const Rectf& rect, const Rgb& color);
+  void DrawPoly(const Poly2f& poly, const Rgb& color);
+  void DrawLines(const std::vector<lineseg2f> lines, const Rgb& color);
+
+  wxPaintDC* dc;
+  const ViewData& view;
+};
+
 class Object {
  public:
   Object();
   virtual ~Object();
 
-  virtual void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& context) const = 0;
+  virtual void Draw(DrawCommand* draw, const DrawContext& context) const = 0;
   virtual bool HitTest(const vec2f& pos) const = 0;
 
   virtual void MoveSet(const vec2f& m) = 0;
@@ -55,7 +69,7 @@ class Node : public Object {
   Node(const Rectf &r, const std::string& t);
   ~Node();
 
-  void Draw(wxPaintDC* dc, const ViewData& view, const DrawContext& drawContext) const override ;
+  void Draw(DrawCommand* draw, const DrawContext& drawContext) const override ;
   bool HitTest(const vec2f& pos) const override;
 
   void MoveSet(const vec2f& m) override ;
@@ -102,11 +116,11 @@ class Tool {
   void OnMouseMoved(GraphData* data, wxMouseEvent& event);
   void OnMouseButton(GraphData *data, wxMouseEvent &event, bool down);
 
-  void OnPaint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw);
+  void OnPaint(DrawCommand* draw, const DrawContext &drawContext);
 
   virtual void MouseMoved(GraphData* data, wxMouseEvent& event) = 0;
   virtual void MouseButton(GraphData *data, wxMouseEvent &event) = 0;
-  virtual void Paint(wxPaintDC *dc, const ViewData &view, const DrawContext &draw) = 0;
+  virtual void Paint(DrawCommand* draw, const DrawContext &drawContext) = 0;
   virtual void OnCancel(GraphData* data) = 0;
 
   virtual void Refresh(GraphData* data, wxMouseEvent& event);
