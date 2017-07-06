@@ -8,7 +8,7 @@ wxColor ToWxColor(const Rgb& c) {
 
 DrawCommand::DrawCommand(wxPaintDC *d, const ViewData &v) : dc(d), view(v) {}
 
-void DrawCommand::DrawRectangle(const Rgb &rgb, const Rectf &rect) {
+void DrawCommand::FillRectangle(const Rgb &rgb, const Rectf &rect) {
   dc->SetPen( wxPen(wxColor(0,0,0), 1) );
   const wxColor c = ToWxColor(rgb);
   dc->SetBrush(*wxTheBrushList->FindOrCreateBrush(c));
@@ -83,7 +83,9 @@ Node::~Node() { }
 void Node::Draw(DrawCommand* draw, const DrawContext& drawContext) const {
   const Rectf currentRect = GetModifiedRect();
 
-  draw->DrawRectangle( Rgb::From(drawContext.selected? Color::AquaMarine : Color::BlanchedAlmond), currentRect);
+  draw->FillRectangle(Rgb::From(
+      drawContext.selected ? Color::AquaMarine : Color::BlanchedAlmond),
+                      currentRect);
   draw->DrawText(text, currentRect, Rgb::From(Color::Black));
 }
 
