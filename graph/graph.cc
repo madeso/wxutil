@@ -15,6 +15,12 @@ void DrawCommand::FillRectangle(const Rgb &rgb, const Rectf &rect) {
   dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
 }
 
+void DrawCommand::DrawRectangle(const Rgb &rgb, const Rectf &rect, int thickness) {
+  dc->SetPen( wxPen(ToWxColor(rgb), 1) );
+  dc->SetBrush(wxNullBrush);
+  dc->DrawRectangle(view.Convert(rect.GetPosition()), view.Convert(rect.GetSize()));
+}
+
 void DrawCommand::DrawText(const std::string &text, const Rectf &rect,
                            const Rgb &color) {
   dc->SetTextForeground( ToWxColor(color) );
@@ -552,7 +558,7 @@ class LinkTool : public Tool {
 
   void Paint(DrawCommand* draw, const DrawContext& drawContext) override {
     if(hovering_node && hovering_node != first_node) {
-      const vec2f p = hovering_node->rect.GetAbsoluteCenterPos();
+      draw->DrawRectangle(Rgb::From(Color::Blue), hovering_node->rect.ExpandCopy(10), 2);
       // PaintHotspot(draw, drawContext, p);
     }
 

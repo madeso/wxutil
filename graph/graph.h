@@ -41,6 +41,8 @@ class DrawCommand {
   DrawCommand(wxPaintDC* d, const ViewData& v);
 
   void FillRectangle(const Rgb &rgb, const Rectf &rect);
+
+  void DrawRectangle(const Rgb &rgb, const Rectf &rect, int thickness);
   void DrawText(const std::string& text, const Rectf& rect, const Rgb& color);
   void DrawPoly(const Poly2f& poly, const Rgb& color);
   void DrawLines(const std::vector<lineseg2f> lines, const Rgb& color);
