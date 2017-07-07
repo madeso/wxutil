@@ -46,6 +46,17 @@ void DrawCommand::DrawLines(const std::vector<lineseg2f> lines,
   }
 }
 
+SegmentBuilder::SegmentBuilder(const vec2f& from, const vec2f& to) {
+  (*this)(from, to);
+}
+SegmentBuilder& SegmentBuilder::operator()(const vec2f& from, const vec2f& to) {
+  segments.push_back(lineseg2f(from, to));
+  return *this;
+}
+SegmentBuilder::operator const std::vector<lineseg2f>&() const {
+  return segments;
+}
+
 Sizef GetTextExtents(const std::string &text) {
   wxBitmap temp;
   wxMemoryDC dc;
@@ -230,10 +241,7 @@ void DrawEdge(DrawCommand* draw, const OptionalPoint& fp, const OptionalPoint& t
     const vec2f midpoint1 = xfirst ? vec2f(fp.point.x+halfx, fp.point.y) : vec2f(fp.point.x, fp.point.y+halfy);
     const vec2f midpoint2 = xfirst ? vec2f(fp.point.x+halfx, tp.point.y) : vec2f(tp.point.x, fp.point.y+halfy);
 
-    std::vector<lineseg2f> lines;
-    lines.push_back(lineseg2f(fp.point, midpoint1));
-    lines.push_back(lineseg2f(midpoint1, midpoint2));
-    lines.push_back(lineseg2f(midpoint2, tp.point));
+    const auto lines = SegmentBuilder(fp.point, midpoint1)(midpoint1, midpoint2)(midpoint2, tp.point);
     draw->DrawLines(lines, Rgb::From(Color::Black));
   }
 }
@@ -455,9 +463,7 @@ class MoveTool : public Tool {
 
   void Paint(DrawCommand* draw, const DrawContext &drawContext) override {
     if(mouseButtonDown) {
-      std::vector<lineseg2f> lines;
-      lines.push_back(lineseg2f(mousePosition, start));
-      draw->DrawLines(lines, Rgb::From(Color::Blue));
+      draw->DrawLines(SegmentBuilder(mousePosition, start), Rgb::From(Color::Blue));
     }
   }
 

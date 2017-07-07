@@ -36,6 +36,14 @@ class DrawContext {
   int width;
 };
 
+class SegmentBuilder {
+ public:
+  SegmentBuilder(const vec2f& from, const vec2f& to);
+  SegmentBuilder& operator()(const vec2f& from, const vec2f& to);
+  operator const std::vector<lineseg2f>&() const;
+  std::vector<lineseg2f> segments;
+};
+
 class DrawCommand {
  public:
   DrawCommand(wxPaintDC* d, const ViewData& v);
