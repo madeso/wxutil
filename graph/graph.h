@@ -54,6 +54,7 @@ class DrawCommand {
   void DrawText(const std::string& text, const Rectf& rect, const Rgb& color);
   void DrawPoly(const Poly2f& poly, const Rgb& color);
   void DrawLines(const std::vector<lineseg2f> lines, const Rgb& color);
+  void DrawCircle(const vec2f& center, float distance, const Rgb& color);
 
   wxPaintDC* dc;
   const ViewData& view;

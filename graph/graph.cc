@@ -38,6 +38,13 @@ void DrawCommand::DrawPoly(const Poly2f &poly, const Rgb &color) {
   }
 }
 
+void DrawCommand::DrawCircle(const vec2f& center, float distance, const Rgb& color) {
+  const wxPoint m = view.Convert(center);
+  dc->SetPen( wxPen(ToWxColor(color), 1, wxPENSTYLE_LONG_DASH ) );
+  dc->SetBrush(wxNullBrush);
+  dc->DrawCircle(m, view.HorizontalConvert(distance));
+}
+
 void DrawCommand::DrawLines(const std::vector<lineseg2f> lines,
                             const Rgb &color) {
   dc->SetPen( wxPen(ToWxColor(color), 1) );
@@ -550,22 +557,16 @@ class LinkTool : public Tool {
     }
   }
 
-  void PaintHotspot(wxPaintDC *dc, const ViewData &view,
-                         const DrawContext &draw, const vec2f& mp) {
-    const int CROSS_SIZE = 20;
-    const wxPoint m = view.Convert(mp);
-    float distance = vec2f::FromTo(mp, mousePosition).GetLength();
-    dc->SetPen( wxPen(wxColor(0,0,255), 1, wxPENSTYLE_LONG_DASH ) );
-    dc->SetBrush(wxNullBrush);
-    dc->DrawCircle(m, view.HorizontalConvert(distance));
-    dc->DrawLine(m.x-CROSS_SIZE, m.y-CROSS_SIZE, m.x+CROSS_SIZE, m.y+CROSS_SIZE);
-    dc->DrawLine(m.x-CROSS_SIZE, m.y+CROSS_SIZE, m.x+CROSS_SIZE, m.y-CROSS_SIZE);
+  void PaintHotspot(DrawCommand* draw, const DrawContext &drawContext, const vec2f& nodeCenter) {
+    draw->DrawCircle(nodeCenter, vec2f::FromTo(nodeCenter, mousePosition).GetLength(), Rgb::From(Color::Blue));
+    const Rectf cross = Rectf::FromPoint(nodeCenter).ExpandCopy(20);
+    draw->DrawLines( SegmentBuilder(cross.TopLeft(), cross.BottomRight())(cross.TopRight(), cross.BottomLeft()), Rgb::From(Color::Blue) );
   }
 
   void Paint(DrawCommand* draw, const DrawContext& drawContext) override {
     if(hovering_node && hovering_node != first_node) {
       draw->DrawRectangle(Rgb::From(Color::Blue), hovering_node->rect.ExpandCopy(10), 2);
-      // PaintHotspot(draw, drawContext, p);
+      PaintHotspot(draw, drawContext, hovering_node->rect.GetAbsoluteCenterPos());
     }
 
     if(first_node.get()) {
