@@ -139,9 +139,19 @@ class OptionalPoint {
  public:
   bool hasPoint;
   vec2f point;
+  const Node* node;
 
   operator bool() const {
     return hasPoint;
+  }
+
+  OptionalPoint GetNewCollisionPoint(const OptionalPoint& other, bool flatteny) const {
+    if(node != nullptr && other.hasPoint) {
+      const vec2f c = OptionalPoint(*node).point;
+      const vec2f a = flatteny? vec2f(other.point.x, c.y) : vec2f(c.x, other.point.y);
+      return NodeCollision(node, a);
+    }
+    else return *this;
   }
 
   static OptionalPoint NoPoint() {
@@ -151,25 +161,25 @@ class OptionalPoint {
   static OptionalPoint NodeCollision(std::weak_ptr<Node> fromNode, const OptionalPoint& oto) {
     std::shared_ptr<Node> node = fromNode.lock();
     if(node) {
-      return NodeCollision(*node, oto);
+      return NodeCollision(node.get(), oto);
     }
     else {
       return NoPoint();
     }
   }
 
-  static OptionalPoint NodeCollision(const Node& fromNode, const OptionalPoint& oto) {
+  static OptionalPoint NodeCollision(const Node* fromNode, const OptionalPoint& oto) {
     if(oto.hasPoint == false) return NoPoint();
 
     const vec2f to = oto.point;
 
-    const Rectf r = fromNode.GetModifiedRect();
+    const Rectf r = fromNode->GetModifiedRect();
     const vec2f fpp = r.GetAbsoluteCenterPos();
 
     const line2f::Collision fc = r.GetPointOnEdge(line2f::FromTo(fpp, to));
 
     if(fc.collision ) {
-      return fc.point;
+      return OptionalPoint(fc.point, fromNode);
     }
     else {
       return NoPoint();
@@ -186,8 +196,9 @@ class OptionalPoint {
     }
   }
 
-  OptionalPoint(const vec2f& p) : hasPoint(true), point(p) {};
-  OptionalPoint(const Node& node) : hasPoint(true), point(node.GetModifiedRect().GetAbsoluteCenterPos()) {}
+  OptionalPoint(const vec2f& p) : hasPoint(true), point(p), node(nullptr) {};
+  OptionalPoint(const vec2f& p, const Node* n) : hasPoint(true), point(p), node(n) {};
+  OptionalPoint(const Node& node) : hasPoint(true), point(node.GetModifiedRect().GetAbsoluteCenterPos()), node(nullptr) {}
  private:
   OptionalPoint(bool hp, const vec2f& p) : hasPoint(hp), point(p) {};
 };
@@ -236,12 +247,18 @@ void DrawStraightEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& 
   }
 }
 
-void DrawEdge(DrawCommand* draw, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
-  if(fp.hasPoint && tp.hasPoint) {
+void DrawEdge(DrawCommand* draw, const OptionalPoint& fpt, const OptionalPoint& tpt, Node* from, Node* to) {
+  if(fpt.hasPoint && tpt.hasPoint) {
+    const vec2f dir = vec2f::FromTo(fpt.point, tpt.point);
+    const bool xfirst = Abs(dir.x) > Abs(dir.y);
+
+    // todo: there is a bug when to is null, we cant link from center of from node
+    // todo: move theese to a edge option struct
+    OptionalPoint fp = to ? fpt.GetNewCollisionPoint(*to, xfirst) : fpt;
+    OptionalPoint tp = from ? tpt.GetNewCollisionPoint(*from, xfirst) : tpt;
+
     // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
     // DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
-    const vec2f dir = vec2f::FromTo(fp.point, tp.point);
-    const bool xfirst = Abs(dir.x) > Abs(dir.y);
 
     const float halfy = dir.y / 2;
     const float halfx = dir.x / 2;
@@ -267,7 +284,7 @@ class Link : public Object {
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      DrawEdge(draw, OptionalPoint::NodeCollision(*f, *t), OptionalPoint::NodeCollision(*t, *f), f.get(), t.get());
+      DrawEdge(draw, OptionalPoint::NodeCollision(f.get(), *t), OptionalPoint::NodeCollision(t.get(), *f), f.get(), t.get());
     }
 
     if(drawContext.selected) {
@@ -276,6 +293,7 @@ class Link : public Object {
   }
 
   bool HitTest(const vec2f& pos) const override {
+    // todo: fix collision detection when edge is not a single line
     const Poly2f p = GetPolygon();
     const bool ht = p.IsInside(pos);
     return ht;
@@ -572,9 +590,9 @@ class LinkTool : public Tool {
     if(first_node.get()) {
       // dc->SetPen( wxPen(wxColor(255,0,0), 1, wxPENSTYLE_LONG_DASH ) );
 
-      const OptionalPoint to = hovering_node && hovering_node != first_node ? OptionalPoint::NodeCollision(*hovering_node, *first_node) : mousePosition;
+      const OptionalPoint to = hovering_node && hovering_node != first_node ? OptionalPoint::NodeCollision(hovering_node.get(), *first_node) : mousePosition;
 
-      DrawEdge(draw, OptionalPoint::NodeCollision(*first_node, to), to, first_node.get(), hovering_node.get());
+      DrawEdge(draw, OptionalPoint::NodeCollision(first_node.get(), to), to, first_node.get(), hovering_node.get());
     }
   }
 
