@@ -212,16 +212,15 @@ enum class HeadStyle {
 };
 
 struct EdgeStyle {
-  EdgeStyle() : edgeForm(EdgeForm::Aligned), headStyle(HeadStyle::Trident), centerStraightEdges(false) {}
+  EdgeStyle() : edgeForm(EdgeForm::Aligned), headStyle(HeadStyle::Arrow), centerStraightEdges(false) {}
   EdgeForm edgeForm;
   HeadStyle headStyle;
   bool centerStraightEdges;
 };
 
-void DrawArrowHead(DrawCommand* draw, const vec2f& from, const vec2f& to, const Angle& a, float distance, const Rgb& color) {
-  const vec2f dir = vec2f::FromTo(to, from).GetNormalized();
-  const vec2f dira = dir.GetRotated(a);
-  const vec2f dirb = dir.GetRotated(-a);
+void DrawArrowHead(DrawCommand* draw, const vec2f& dir, const vec2f& to, const Angle& a, float distance, const Rgb& color) {
+  const vec2f dira = (-dir).GetRotated(a);
+  const vec2f dirb = (-dir).GetRotated(-a);
 
   // todo: distance should perhaps be specified in view coordinates not in world coordinates
   const auto lines = SegmentBuilder
@@ -242,8 +241,7 @@ vec2f GetTridentCollision(const vec2f& from, const vec2f& dir, const float dista
   return from + dir * distance;
 }
 
-void DrawTridentHead(DrawCommand* draw, const vec2f& from, const vec2f& to, float distanceFromTo, float distanceFromCenter, Node* endNode, const Rgb& color) {
-  const vec2f dir1 = vec2f::FromTo(from, to).GetNormalized();
+void DrawTridentHead(DrawCommand* draw, const vec2f& dir1, const vec2f& to, float distanceFromTo, float distanceFromCenter, Node* endNode, const Rgb& color) {
   const vec2f dir2 = dir1.GetRotated(Angle::FromDegrees(90));
 
   // todo: distance should perhaps be specified in view coordinates not in world coordinates
@@ -258,18 +256,22 @@ void DrawTridentHead(DrawCommand* draw, const vec2f& from, const vec2f& to, floa
   draw->DrawLines(lines, color);
 }
 
+void DrawEdgeHead(DrawCommand* draw, const EdgeStyle& style, const Rgb& color, const vec2f& dir, const vec2f& toPoint, Node* from, Node* to) {
+  switch(style.headStyle) {
+    case HeadStyle::None:
+      break;
+    case HeadStyle::Arrow:
+      DrawArrowHead(draw, dir, toPoint, Angle::FromDegrees(45), 20, color);
+      break;
+    case HeadStyle::Trident:
+      DrawTridentHead(draw, dir, toPoint, 20, 20, to, color);
+      break;
+  }
+}
+
 void DrawStraightEdge(DrawCommand* draw, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to, const EdgeStyle& style, const Rgb& color) {
   if(fp.hasPoint && tp.hasPoint) {
-    switch(style.headStyle) {
-      case HeadStyle::None:
-        break;
-      case HeadStyle::Arrow:
-        DrawArrowHead(draw, fp.point, tp.point, Angle::FromDegrees(45), 20, color);
-        break;
-      case HeadStyle::Trident:
-        DrawTridentHead(draw, fp.point, tp.point, 20, 20, to, color);
-        break;
-    }
+    DrawEdgeHead(draw, style, color, vec2f::FromTo(fp.point, tp.point).GetNormalized(), tp.point, from, to);
 
     draw->DrawLines(SegmentBuilder(fp.point, tp.point), color);
   }
@@ -280,8 +282,6 @@ void DrawAlignedEdge(DrawCommand* draw, const OptionalPoint& fpt, const Optional
     const vec2f dir = vec2f::FromTo(fpt.point, tpt.point);
     const bool xfirst = Abs(dir.x) > Abs(dir.y);
 
-    // todo: there is a bug when to is null, we cant link from center of from node
-    // todo: move theese to a edge option struct
     OptionalPoint fp = style.centerStraightEdges ? fpt.GetNewCollisionPoint(to?*to:tpt, xfirst) : fpt;
     OptionalPoint tp = style.centerStraightEdges ? tpt.GetNewCollisionPoint(from?*from:fpt, xfirst) : tpt;
 
@@ -293,6 +293,7 @@ void DrawAlignedEdge(DrawCommand* draw, const OptionalPoint& fpt, const Optional
     const vec2f midpoint1 = xfirst ? vec2f(fp.point.x+halfx, fp.point.y) : vec2f(fp.point.x, fp.point.y+halfy);
     const vec2f midpoint2 = xfirst ? vec2f(fp.point.x+halfx, tp.point.y) : vec2f(tp.point.x, fp.point.y+halfy);
 
+    DrawEdgeHead(draw, style, color, vec2f::FromTo(midpoint2, tp.point).GetNormalized(), tp.point, from, to);
     const auto lines = SegmentBuilder(fp.point, midpoint1)(midpoint1, midpoint2)(midpoint2, tp.point);
     draw->DrawLines(lines, color);
   }
