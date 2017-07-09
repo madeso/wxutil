@@ -203,14 +203,31 @@ class OptionalPoint {
   OptionalPoint(bool hp, const vec2f& p) : hasPoint(hp), point(p) {};
 };
 
-void DrawArrowHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, const vec2f& to, const Angle& a, float distance) {
+enum class EdgeForm {
+  Straight, Aligned
+};
+
+enum class HeadStyle {
+  None, Arrow, Trident
+};
+
+struct EdgeStyle {
+  EdgeStyle() : edgeForm(EdgeForm::Aligned), headStyle(HeadStyle::Trident), centerStraightEdges(false) {}
+  EdgeForm edgeForm;
+  HeadStyle headStyle;
+  bool centerStraightEdges;
+};
+
+void DrawArrowHead(DrawCommand* draw, const vec2f& from, const vec2f& to, const Angle& a, float distance, const Rgb& color) {
   const vec2f dir = vec2f::FromTo(to, from).GetNormalized();
   const vec2f dira = dir.GetRotated(a);
   const vec2f dirb = dir.GetRotated(-a);
 
   // todo: distance should perhaps be specified in view coordinates not in world coordinates
-  dc->DrawLine(view.Convert(to), view.Convert(to + dira*distance));
-  dc->DrawLine(view.Convert(to), view.Convert(to + dirb*distance));
+  const auto lines = SegmentBuilder
+      (to, to + dira*distance)
+      (to, to + dirb*distance);
+  draw->DrawLines(lines, color);
 }
 
 vec2f GetTridentCollision(const vec2f& from, const vec2f& dir, const float distance, float scale, Node* node) {
@@ -225,7 +242,7 @@ vec2f GetTridentCollision(const vec2f& from, const vec2f& dir, const float dista
   return from + dir * distance;
 }
 
-void DrawTridentHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, const vec2f& to, float distanceFromTo, float distanceFromCenter, Node* endNode) {
+void DrawTridentHead(DrawCommand* draw, const vec2f& from, const vec2f& to, float distanceFromTo, float distanceFromCenter, Node* endNode, const Rgb& color) {
   const vec2f dir1 = vec2f::FromTo(from, to).GetNormalized();
   const vec2f dir2 = dir1.GetRotated(Angle::FromDegrees(90));
 
@@ -233,29 +250,40 @@ void DrawTridentHead(wxPaintDC* dc, const ViewData& view, const vec2f& from, con
   const vec2f connection = to - dir1*distanceFromTo;
   const vec2f a = connection - dir2*distanceFromCenter;
   const vec2f b = connection + dir2*distanceFromCenter;
-  dc->DrawLine(view.Convert(a), view.Convert(b));
   const float scale = 3;
-  dc->DrawLine(view.Convert(a), view.Convert(GetTridentCollision(a, dir1, distanceFromTo, scale, endNode)));
-  dc->DrawLine(view.Convert(b), view.Convert(GetTridentCollision(b, dir1, distanceFromTo, scale, endNode)));
+  const auto lines = SegmentBuilder
+      (a,b)
+      (a, GetTridentCollision(a, dir1, distanceFromTo, scale, endNode))
+      (b, GetTridentCollision(b, dir1, distanceFromTo, scale, endNode));
+  draw->DrawLines(lines, color);
 }
 
-void DrawStraightEdge(wxPaintDC* dc, const ViewData& view, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to) {
+void DrawStraightEdge(DrawCommand* draw, const OptionalPoint& fp, const OptionalPoint& tp, Node* from, Node* to, const EdgeStyle& style, const Rgb& color) {
   if(fp.hasPoint && tp.hasPoint) {
-    // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
-    DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
-    dc->DrawLine(view.Convert(fp.point), view.Convert(tp.point));
+    switch(style.headStyle) {
+      case HeadStyle::None:
+        break;
+      case HeadStyle::Arrow:
+        DrawArrowHead(draw, fp.point, tp.point, Angle::FromDegrees(45), 20, color);
+        break;
+      case HeadStyle::Trident:
+        DrawTridentHead(draw, fp.point, tp.point, 20, 20, to, color);
+        break;
+    }
+
+    draw->DrawLines(SegmentBuilder(fp.point, tp.point), color);
   }
 }
 
-void DrawEdge(DrawCommand* draw, const OptionalPoint& fpt, const OptionalPoint& tpt, Node* from, Node* to) {
+void DrawAlignedEdge(DrawCommand* draw, const OptionalPoint& fpt, const OptionalPoint& tpt, Node* from, Node* to, const EdgeStyle& style, const Rgb& color) {
   if(fpt.hasPoint && tpt.hasPoint) {
     const vec2f dir = vec2f::FromTo(fpt.point, tpt.point);
     const bool xfirst = Abs(dir.x) > Abs(dir.y);
 
     // todo: there is a bug when to is null, we cant link from center of from node
     // todo: move theese to a edge option struct
-    OptionalPoint fp = to ? fpt.GetNewCollisionPoint(*to, xfirst) : fpt;
-    OptionalPoint tp = from ? tpt.GetNewCollisionPoint(*from, xfirst) : tpt;
+    OptionalPoint fp = style.centerStraightEdges ? fpt.GetNewCollisionPoint(to?*to:tpt, xfirst) : fpt;
+    OptionalPoint tp = style.centerStraightEdges ? tpt.GetNewCollisionPoint(from?*from:fpt, xfirst) : tpt;
 
     // DrawArrowHead(dc, view, fp.point, tp.point, Angle::FromDegrees(45), 20);
     // DrawTridentHead(dc, view, fp.point, tp.point, 20, 20, to);
@@ -266,7 +294,20 @@ void DrawEdge(DrawCommand* draw, const OptionalPoint& fpt, const OptionalPoint& 
     const vec2f midpoint2 = xfirst ? vec2f(fp.point.x+halfx, tp.point.y) : vec2f(tp.point.x, fp.point.y+halfy);
 
     const auto lines = SegmentBuilder(fp.point, midpoint1)(midpoint1, midpoint2)(midpoint2, tp.point);
-    draw->DrawLines(lines, Rgb::From(Color::Black));
+    draw->DrawLines(lines, color);
+  }
+}
+
+void DrawEdge(DrawCommand* draw, const OptionalPoint& fpt, const OptionalPoint& tpt, Node* from, Node* to, const EdgeStyle& style, const Rgb& color) {
+  switch(style.edgeForm){
+    case EdgeForm::Straight:
+      DrawStraightEdge(draw, fpt, tpt, from, to, style, color);
+      break;
+    case EdgeForm ::Aligned:
+      DrawAlignedEdge(draw, fpt, tpt, from, to, style, color);
+      break;
+    default:
+      assert(false && "unhandled edge form");
   }
 }
 
@@ -284,7 +325,9 @@ class Link : public Object {
     std::shared_ptr<Node> t = to.lock();
     if( f && t ) {
       // todo: remove self if the nodes has been removed
-      DrawEdge(draw, OptionalPoint::NodeCollision(f.get(), *t), OptionalPoint::NodeCollision(t.get(), *f), f.get(), t.get());
+      // todo: move draw setting to a better place
+      EdgeStyle style;
+      DrawEdge(draw, OptionalPoint::NodeCollision(f.get(), *t), OptionalPoint::NodeCollision(t.get(), *f), f.get(), t.get(), style, Rgb::From(Color::Black));
     }
 
     if(drawContext.selected) {
@@ -592,7 +635,9 @@ class LinkTool : public Tool {
 
       const OptionalPoint to = hovering_node && hovering_node != first_node ? OptionalPoint::NodeCollision(hovering_node.get(), *first_node) : mousePosition;
 
-      DrawEdge(draw, OptionalPoint::NodeCollision(first_node.get(), to), to, first_node.get(), hovering_node.get());
+      // todo: move draw setting to a better place
+      EdgeStyle style;
+      DrawEdge(draw, OptionalPoint::NodeCollision(first_node.get(), to), to, first_node.get(), hovering_node.get(), style, Rgb::From(Color::BurlyWood));
     }
   }
 
